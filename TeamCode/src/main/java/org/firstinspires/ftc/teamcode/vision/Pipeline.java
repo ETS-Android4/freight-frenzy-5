@@ -11,7 +11,7 @@ import org.openftc.easyopencv.OpenCvPipeline;
 import java.util.ArrayList;
 
 public class Pipeline extends OpenCvPipeline {
-    public static int CV_THRESHOLD = 190;
+    public static int CV_THRESHOLD = 150;
     static final Scalar BLUE = new Scalar(0, 0, 255);
     static final int CONTOUR_LINE_THICKNESS = 2;
 
@@ -30,7 +30,7 @@ public class Pipeline extends OpenCvPipeline {
     void inputToCb(Mat input)
     {
         Imgproc.cvtColor(input, YCrCb, Imgproc.COLOR_RGB2YCrCb);
-        Core.extractChannel(YCrCb, Cb, 2);
+        Core.extractChannel(YCrCb, Cb, 1);
     }
 
     void morphMask(Mat input, Mat output)
@@ -57,7 +57,7 @@ public class Pipeline extends OpenCvPipeline {
         inputToCb(input);
         Imgproc.GaussianBlur(Cb, Cb, new Size(5,5),0);
 
-        Imgproc.threshold(Cb, thresholdMat, CV_THRESHOLD, 255, Imgproc.THRESH_BINARY_INV);
+        Imgproc.threshold(Cb, thresholdMat, CV_THRESHOLD, 255, Imgproc.THRESH_BINARY);
         morphMask(thresholdMat, morphedThreshold);
 
         ArrayList<MatOfPoint> contoursList = new ArrayList<>();
@@ -65,6 +65,6 @@ public class Pipeline extends OpenCvPipeline {
         input.copyTo(contoursOnPlainImageMat);
         Imgproc.drawContours(contoursOnPlainImageMat, contoursList, -1, BLUE, CONTOUR_LINE_THICKNESS, 8);
 
-        return Cb;
+        return contoursOnPlainImageMat;
     }
 }
