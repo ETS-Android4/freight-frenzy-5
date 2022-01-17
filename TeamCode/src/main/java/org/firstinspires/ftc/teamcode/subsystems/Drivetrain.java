@@ -50,19 +50,19 @@ public class Drivetrain extends MecanumDrive implements Subsystem {
 
     public static double WHEEL_RADIUS = 1.889764; // in
     public static double GEAR_RATIO = 1; // output (wheel) speed / input (motor) speed
-    public static double TRACK_WIDTH = 13.24; // in
+    public static double TRACK_WIDTH = 13.17; // in
 
     public static double kV = 1.0 / rpmToVelocity(MAX_RPM);
     public static double kA = 0;
     public static double kStatic = 0;
 
-    public static double MAX_VEL = 30;
-    public static double MAX_ACCEL = 30;
-    public static double MAX_ANG_VEL = Math.toRadians(60);
-    public static double MAX_ANG_ACCEL = Math.toRadians(60);
+    public static double MAX_VEL = 50;
+    public static double MAX_ACCEL = 40;
+    public static double MAX_ANG_VEL = Math.toRadians(180);
+    public static double MAX_ANG_ACCEL = Math.toRadians(180);
 
-    public static PIDCoefficients TRANSLATIONAL_PID = new PIDCoefficients(0, 0, 0);
-    public static PIDCoefficients HEADING_PID = new PIDCoefficients(0, 0, 0);
+    public static PIDCoefficients TRANSLATIONAL_PID = new PIDCoefficients(0.15, 0, 0);
+    public static PIDCoefficients HEADING_PID = new PIDCoefficients(0.09, 0, 0);
 
     public static double LATERAL_MULTIPLIER = 1;
 
@@ -80,7 +80,6 @@ public class Drivetrain extends MecanumDrive implements Subsystem {
     private DcMotorEx leftFront, leftRear, rightRear, rightFront;
     private List<DcMotorEx> motors;
 
-    private BNO055IMU imu;
     private VoltageSensor batteryVoltageSensor;
 
     public class FollowTrajectorySequenceCommand implements Command {
@@ -119,12 +118,6 @@ public class Drivetrain extends MecanumDrive implements Subsystem {
 
         batteryVoltageSensor = robot.getVoltageSensor();
 
-        imu = robot.getIMU("imu");
-        BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
-        parameters.angleUnit = BNO055IMU.AngleUnit.RADIANS;
-        imu.initialize(parameters);
-        BNO055IMUUtil.remapAxes(imu, AxesOrder.XYZ, BNO055IMUUtil.AxesSigns.NPN);
-
         leftFront = robot.getMotor("DriveLF");
         leftRear = robot.getMotor("DriveLR");
         rightRear = robot.getMotor("DriveRR");
@@ -152,6 +145,7 @@ public class Drivetrain extends MecanumDrive implements Subsystem {
         leftRear.setDirection(DcMotorSimple.Direction.REVERSE);
 
         trajectorySequenceRunner = new TrajectorySequenceRunner(follower, HEADING_PID);
+        setLocalizer(new OdometryWheels(robot));
     }
 
     public TrajectoryBuilder trajectoryBuilder(Pose2d startPose) {
@@ -251,7 +245,7 @@ public class Drivetrain extends MecanumDrive implements Subsystem {
 
     @Override
     protected double getRawExternalHeading() {
-        return imu.getAngularOrientation().firstAngle;
+        return 0;
     }
 
     @Override
@@ -279,7 +273,7 @@ public class Drivetrain extends MecanumDrive implements Subsystem {
         // expected). This bug does NOT affect orientation.
         //
         // See https://github.com/FIRST-Tech-Challenge/FtcRobotController/issues/251 for details.
-        return (double) -imu.getAngularVelocity().xRotationRate;
+        return 0.0;
     }
 
     @NonNull

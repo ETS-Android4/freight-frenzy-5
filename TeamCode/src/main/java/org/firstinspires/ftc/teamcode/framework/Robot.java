@@ -10,6 +10,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
+import org.firstinspires.ftc.robotcore.external.hardware.camera.CameraName;
 import org.firstinspires.ftc.teamcode.hardware.CachingDcMotorEx;
 import org.firstinspires.ftc.teamcode.hardware.CachingServo;
 import org.firstinspires.ftc.teamcode.hardware.Encoder;
@@ -130,6 +131,10 @@ public class Robot {
 
     public VoltageSensor getVoltageSensor() {
         return hardwareMap.voltageSensor.iterator().next();
+    }
+
+    public HardwareMap getHardwareMap() {
+        return hardwareMap;
     }
 
     public void registerSubsystem(Subsystem subsystem) {
