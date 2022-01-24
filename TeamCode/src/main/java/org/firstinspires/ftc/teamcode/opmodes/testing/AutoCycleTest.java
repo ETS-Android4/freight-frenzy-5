@@ -34,13 +34,18 @@ public class AutoCycleTest extends LinearOpMode {
         robot.intake.setIntakePower(1);
 
         while (!robot.intake.hasFreight() && !isStopRequested()) {
-            robot.drive.setDrivePower(new Pose2d(0.1 + 0.1 * Math.sin(clock.seconds()),0,0.1 * Math.sin(clock.seconds())));
+            robot.drive.setDrivePower(new Pose2d(0.1,0,0.1 * Math.sin(2 *clock.seconds())));
             robot.update();
         }
         if (isStopRequested()) return;
 
         robot.drive.setDrivePower(new Pose2d());
         robot.intake.setIntakePower(-0.5);
+        robot.runCommand(robot.drive.followTrajectory(
+                robot.drive.trajectoryBuilder(robot.drive.getPoseEstimate())
+                .splineToLinearHeading(WAREHOUSE_POSE, WAREHOUSE_POSE.getHeading())
+                .build()
+        ));
         while (!isStopRequested()) {
             robot.update();
         }

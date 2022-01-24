@@ -4,6 +4,7 @@ import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.acmerobotics.roadrunner.trajectory.Trajectory;
+import com.acmerobotics.roadrunner.util.Angle;
 import com.acmerobotics.roadrunner.util.NanoClock;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -11,27 +12,24 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.subsystems.Camera;
 import org.firstinspires.ftc.teamcode.subsystems.FreightFrenzyRobot;
 import org.firstinspires.ftc.teamcode.subsystems.Lift;
+import org.firstinspires.ftc.teamcode.subsystems.OpenCVCamera;
 
 @Config
 @Autonomous
 public class Auto  extends LinearOpMode {
     public static Pose2d INIT_POSE = new Pose2d(-32,64,0);
     public static Pose2d DUCK_SPIN_POSE = new Pose2d(-58, 56, Math.toRadians(90));
-    public static double DUCK_SPIN_POWER = 0.3;
+    public static double DUCK_SPIN_POWER = 0.25;
     public static double DUCK_SPIN_DURATION = 1.4;
-    public static Pose2d DUMP_BLOCK_POSE = new Pose2d(-10, 67 - 0.375, 0);
-    public static Pose2d FIRST_DUMP_POSE = new Pose2d(-10, 54, 0);
-    public static Pose2d CROSS_BARRIER_POSE = new Pose2d(24, 71, 0);
-    public static Pose2d WAREHOUSE_POSE = new Pose2d(48,71,0);
-
-    private Pose2d dumpPose = DUMP_BLOCK_POSE;
+    public static Pose2d DUMP_BLOCK_POSE = new Pose2d(-11, 68, 0);
+    public static Pose2d WAREHOUSE_POSE = new Pose2d(44,68,0);
 
     private NanoClock clock;
 
     @Override
     public void runOpMode() throws InterruptedException {
         FreightFrenzyRobot robot = new FreightFrenzyRobot(this);
-        Camera camera = new Camera(robot);
+        OpenCVCamera camera = new OpenCVCamera(robot);
         robot.registerSubsystem(camera);
         clock = NanoClock.system();
 
@@ -39,9 +37,8 @@ public class Auto  extends LinearOpMode {
 
         while (!isStarted() && !isStopRequested()) {
             robot.update();
-            telemetry.addData("Duck X", camera.getDuckX());
-            telemetry.addData("Duck Y", camera.getDuckY());
             telemetry.addData("Duck Position", camera.getDuckPosition());
+            telemetry.addData("Recognition Area", camera.getRecognitionArea());
             telemetry.update();
             switch (camera.getDuckPosition()) {
                 case LEFT:
@@ -54,7 +51,7 @@ public class Auto  extends LinearOpMode {
                     robot.lift.setHubLevel(Lift.HubLevel.THIRD);
             }
         }
-        camera.shutdown();
+
         if (isStopRequested()) return;
 
         robot.runCommand(robot.drive.followTrajectorySequence(
@@ -66,39 +63,39 @@ public class Auto  extends LinearOpMode {
 
         robot.runCommand(robot.duck.spinDuck(DUCK_SPIN_POWER, DUCK_SPIN_DURATION));
 
-        if (robot.lift.getHubLevel() == Lift.HubLevel.FIRST) {
-            dumpPose = FIRST_DUMP_POSE;
-        }
-
         robot.runCommand(robot.drive.followTrajectorySequence(
                 robot.drive.trajectorySequenceBuilder(DUCK_SPIN_POSE)
                         .turn(-Math.toRadians(90))
-                        .addSpatialMarker(new Vector2d(-54, 60), robot.lift::cycleOuttake)
-                        .splineToLinearHeading(dumpPose, dumpPose.getHeading())
-                        .addTemporalMarker(robot.lift::cycleOuttake)
-                        .waitSeconds(0.25)
+                        .addSpatialMarker(new Vector2d(-57, 60), robot.lift::cycleOuttake)
+                        .splineToLinearHeading(DUMP_BLOCK_POSE, DUMP_BLOCK_POSE.getHeading())
+                        .addSpatialMarker(new Vector2d(-15, 67), robot.lift::cycleOuttake)
                         .build()
         ));
 
         robot.lift.cycleOuttake();
         robot.update();
 
-        Trajectory warehouseTraj = robot.drive.trajectoryBuilder(dumpPose)
-                .splineToSplineHeading(CROSS_BARRIER_POSE, CROSS_BARRIER_POSE.getHeading())
-                .splineToSplineHeading(WAREHOUSE_POSE, WAREHOUSE_POSE.getHeading())
+        Trajectory warehouseTraj = robot.drive.trajectoryBuilder(robot.drive.getPoseEstimate())
+                .lineToLinearHeading(WAREHOUSE_POSE)
                 .build();
 
         robot.runCommand(robot.drive.followTrajectorySequence(
-                robot.drive.trajectorySequenceBuilder(DUMP_BLOCK_POSE)
-                        .waitSeconds(0.5)
+                robot.drive.trajectorySequenceBuilder(robot.drive.getPoseEstimate())
+                        .waitSeconds(1)
                         .addTrajectory(warehouseTraj)
                         .build()
         ));
 
-        robot.intake.setIntakePower(1);
+        robot.intake.setIntakePower(0.8);
 
         while (!robot.intake.hasFreight() && !isStopRequested()) {
-            robot.drive.setDrivePower(new Pose2d(0.1 + 0.1 * Math.sin(clock.seconds()),0,0.1 * Math.sin(clock.seconds())));
+            if (robot.intake.getIntakeCurrent() < 3.5) {
+                robot.drive.setDrivePower(new Pose2d(0.05 +0.1 * Math.sin(4 * clock.seconds()), 0, 0.1 * Math.sin(4 * clock.seconds())));
+                robot.intake.setIntakePower(0.8);
+            } else {
+                robot.drive.setDrivePower(new Pose2d(-0.1,0,0));
+                robot.intake.setIntakePower(-0.5);
+            }
             robot.update();
         }
         if (isStopRequested()) return;
@@ -106,32 +103,47 @@ public class Auto  extends LinearOpMode {
         robot.intake.setIntakePower(-0.5);
 
         robot.lift.setHubLevel(Lift.HubLevel.THIRD);
-        dumpPose = DUMP_BLOCK_POSE;
 
         Trajectory cycleTraj = robot.drive.trajectoryBuilder(WAREHOUSE_POSE, true)
-                .splineToSplineHeading(CROSS_BARRIER_POSE, CROSS_BARRIER_POSE.getHeading())
-                .addSpatialMarker(new Vector2d(12, 70), () -> {
-                    robot.intake.setIntakePower(0);
-                    robot.lift.cycleOuttake();
-                })
-                .splineToSplineHeading(DUMP_BLOCK_POSE, DUMP_BLOCK_POSE.getHeading())
+                .lineToLinearHeading(DUMP_BLOCK_POSE)
                 .build();
 
 
         robot.runCommand(robot.drive.followTrajectorySequence(
                 robot.drive.trajectorySequenceBuilder(robot.drive.getPoseEstimate())
+                        .turn(Angle.normDelta(-robot.drive.getPoseEstimate().getHeading()))
                         .splineToLinearHeading(WAREHOUSE_POSE, WAREHOUSE_POSE.getHeading())
+                        .addTemporalMarker(() -> {
+                            robot.intake.setIntakePower(0);
+                            robot.lift.cycleOuttake();
+                        })
                         .addTrajectory(cycleTraj)
-                        .addDisplacementMarker(robot.lift::cycleOuttake)
+                        .addSpatialMarker(new Vector2d(-9, 67), robot.lift::cycleOuttake)
                         .waitSeconds(0.25)
                         .build()
         ));
 
         robot.lift.cycleOuttake();
+        robot.update();
 
-        robot.runCommand(robot.drive.followTrajectory(
-                warehouseTraj
+        robot.runCommand(robot.drive.followTrajectorySequence(
+                robot.drive.trajectorySequenceBuilder(robot.drive.getPoseEstimate())
+                        .waitSeconds(1)
+                        .addTrajectory(warehouseTraj)
+                        .build()
         ));
+
+        while (!robot.intake.hasFreight() && !isStopRequested()) {
+            if (robot.intake.getIntakeCurrent() < 3.5) {
+                robot.drive.setDrivePower(new Pose2d(0.05 +0.1 * Math.sin(4 * clock.seconds()), 0, 0.1 * Math.sin(4 * clock.seconds())));
+                robot.intake.setIntakePower(0.8);
+            } else {
+                robot.drive.setDrivePower(new Pose2d(-0.1,0,0));
+                robot.intake.setIntakePower(-0.5);
+            }
+            robot.update();
+        }
+        if (isStopRequested()) return;
 
         while (!isStopRequested()) {
             robot.update();
