@@ -20,10 +20,10 @@ import org.firstinspires.ftc.teamcode.framework.Subsystem;
 public class Lift implements Subsystem {
     public static final double PULLEY_RADIUS = 1.0;
     public static final double TICKS_PER_REV = 384.5;
-    public static PIDCoefficients LIFT_PID_COEFFICIENTS = new PIDCoefficients(0.8, 0, 0);
-    public static double kG = 0.05;
-    public static double ARM_MAX_VEL = 4;
-    public static double ARM_MAX_ACCEL = 6;
+    public static PIDCoefficients LIFT_PID_COEFFICIENTS = new PIDCoefficients(0.8, 0, 0.01);
+    public static double kG = 0.01;
+    public static double ARM_MAX_VEL = 6;
+    public static double ARM_MAX_ACCEL = 4;
 
     private DcMotorEx lift;
     private double liftPower = 0;
@@ -35,13 +35,14 @@ public class Lift implements Subsystem {
     private double armPosition = ARM_RETRACT_POSITION;
     private double dumpPosition = DUMPER_RETRACT_POSITION;
 
-    public static double ARM_RETRACT_POSITION = 0.37;
-    public static double ARM_LIFT_POSITION = 0.3;
-    public static double ARM_THIRD_LEVEL_POSITION = 0.9;
+    public static double ARM_RETRACT_POSITION = 0.27;
+    public static double ARM_LIFT_POSITION = 0.27;
+    public static double ARM_THIRD_LEVEL_POSITION = 0.85;
     public static double ARM_SECOND_LEVEL_POSITION = 0.7;
-    public static double ARM_FIRST_LEVEL_POSITION = 0.5;
+    public static double ARM_FIRST_LEVEL_POSITION = 0.6;
     public static double DUMPER_RETRACT_POSITION = 0.4;
-    public static double DUMPER_DUMP_POSITION = 0;
+    public static double DUMPER_LIFTING_POSITION = 0.5;
+    public static double DUMPER_DUMP_POSITION = 0.2;
     public static double ARM_EXTEND_TIME = 1;
     private OuttakeState outtakeState = OuttakeState.RETRACT;
     private HubLevel hubLevel = HubLevel.THIRD;
@@ -79,7 +80,7 @@ public class Lift implements Subsystem {
         lift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         liftPidController = new PIDFController(LIFT_PID_COEFFICIENTS, 0, 0, kG);
-        liftPidController.setOutputBounds(-0.5, 0.5);
+        liftPidController.setOutputBounds(-0.6, 0.6);
 
         clock = NanoClock.system();
     }
@@ -159,6 +160,10 @@ public class Lift implements Subsystem {
         );
     }
 
+    public OuttakeState getOuttakeState() {
+        return outtakeState;
+    }
+
     @Override
     public void update(TelemetryPacket packet) {
         switch (outtakeState) {
@@ -170,7 +175,7 @@ public class Lift implements Subsystem {
                     armPosition = ARM_LIFT_POSITION;
                 break;
             case EXTEND_ARM:
-                dumpPosition = DUMPER_RETRACT_POSITION;
+                dumpPosition = DUMPER_LIFTING_POSITION;
                 if (Math.abs(liftPidController.getLastError()) < 0.2 && !armMoving && clock.seconds() - initialTimestamp >= LIFT_EXTEND_TIME) {
                     armMoving = true;
                     initialTimestamp = clock.seconds();
@@ -189,7 +194,7 @@ public class Lift implements Subsystem {
                 }
                 break;
             case EXTEND:
-                dumpPosition = DUMPER_RETRACT_POSITION;
+                dumpPosition = DUMPER_LIFTING_POSITION;
                 armPosition = getArmExtendPosition();
                 break;
             case DUMP:
@@ -198,7 +203,7 @@ public class Lift implements Subsystem {
                 break;
             case RETRACT_ARM:
                 dumpPosition = DUMPER_RETRACT_POSITION;
-                if (Math.abs(liftPidController.getLastError()) < 0.2) {
+                if (Math.abs(liftPidController.getLastError()) < 1) {
                     armPosition = ARM_LIFT_POSITION;
                     if (!armMoving) {
                         armMoving = true;

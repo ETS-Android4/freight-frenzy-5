@@ -61,7 +61,7 @@ public class Drivetrain extends MecanumDrive implements Subsystem {
     public static double MAX_ANG_VEL = Math.toRadians(180);
     public static double MAX_ANG_ACCEL = Math.toRadians(180);
 
-    public static PIDCoefficients TRANSLATIONAL_PID = new PIDCoefficients(0.15, 0, 0);
+    public static PIDCoefficients TRANSLATIONAL_PID = new PIDCoefficients(0.2, 0, 0);
     public static PIDCoefficients HEADING_PID = new PIDCoefficients(0.09, 0, 0);
 
     public static double LATERAL_MULTIPLIER = 1;

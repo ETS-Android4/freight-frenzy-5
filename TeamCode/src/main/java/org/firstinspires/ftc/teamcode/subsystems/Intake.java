@@ -32,6 +32,10 @@ public class Intake implements Subsystem {
         return distanceSensor.getDistance(DistanceUnit.MM) < 100;
     }
 
+    public double getIntakeCurrent() {
+        return intake.getCurrent(CurrentUnit.AMPS);
+    }
+
     @Override
     public void update(TelemetryPacket packet) {
         if (intakePower > 0 && hasFreight())
