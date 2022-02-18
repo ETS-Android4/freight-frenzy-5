@@ -5,6 +5,7 @@ import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.control.PIDCoefficients;
 import com.acmerobotics.roadrunner.control.PIDFController;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
+import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -20,7 +21,8 @@ public class SimpleMecanumDrive implements Subsystem {
     private DcMotorEx[] motors = new DcMotorEx[4];
     private DcMotorEx tank;
     private Servo lifterL, lifterR;
-    private DistanceSensor distance1, distance2;
+    private OdometryWheels odometryWheels;
+    BNO055IMU imu;
 
     private Double[] powers = {0.0, 0.0, 0.0, 0.0};
     private double tankPower = 0.0;
@@ -29,7 +31,7 @@ public class SimpleMecanumDrive implements Subsystem {
     private PIDFController headingAlignPID;
 
     public static double lifterRetractPosition = 1;
-    public static double lifterExtendPosition = 0.9;
+    public static double lifterExtendPosition = 0.85;
 
     public boolean wallAlign = false;
 
@@ -41,16 +43,19 @@ public class SimpleMecanumDrive implements Subsystem {
         tank = robot.getMotor("frontEncoder");
         lifterL = robot.getServo("LifterL");
         lifterR = robot.getServo("LifterR");
-        distance1 = robot.getHardwareMap().get(DistanceSensor.class, "distance");
-        distance2 = robot.getHardwareMap().get(DistanceSensor.class, "distance2");
+        odometryWheels = new OdometryWheels(robot);
+        odometryWheels.setPoseEstimate(new Pose2d(9,64,0));
+        imu = robot.getIMU("imu");
+        BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
+        parameters.angleUnit = BNO055IMU.AngleUnit.RADIANS;
 
         motors[0].setDirection(DcMotorSimple.Direction.REVERSE);
         motors[1].setDirection(DcMotorSimple.Direction.REVERSE);
         lifterR.setDirection(Servo.Direction.REVERSE);
 
-        wallAlignPID = new PIDFController(new PIDCoefficients(-0.15, 0, 0));
-        wallAlignPID.setTargetPosition(35);
-        headingAlignPID = new PIDFController(new PIDCoefficients(0.1, 0, 0));
+        wallAlignPID = new PIDFController(new PIDCoefficients(0.3, 0, 0));
+        wallAlignPID.setTargetPosition(63.75);
+        headingAlignPID = new PIDFController(new PIDCoefficients(1.5, 0, 0));
         headingAlignPID.setTargetPosition(0);
 
         for (DcMotorEx motor : motors) {
@@ -60,9 +65,11 @@ public class SimpleMecanumDrive implements Subsystem {
 
     public void setDrivePower(Pose2d drivePower) {
         if (wallAlign) {
+            Pose2d poseEstimate = odometryWheels.getPoseEstimate();
             drivePower = new Pose2d(drivePower.getX(),
-                    wallAlignPID.update((distance1.getDistance(DistanceUnit.MM) + distance2.getDistance(DistanceUnit.MM)) / 2),
-                    headingAlignPID.update((distance1.getDistance(DistanceUnit.MM) - distance2.getDistance(DistanceUnit.MM)) / 2));
+                    wallAlignPID.update(poseEstimate.getY()),
+                    headingAlignPID.update(imu.getAngularOrientation().firstAngle)
+            );
         }
 
         powers[0] = drivePower.getX() - drivePower.getY() - drivePower.getHeading();
@@ -89,6 +96,7 @@ public class SimpleMecanumDrive implements Subsystem {
 
     @Override
     public void update(TelemetryPacket packet) {
+        odometryWheels.update();
         for (int i = 0; i < 4; i++){
             motors[i].setPower(powers[i]);
         }

@@ -15,8 +15,8 @@ import org.openftc.easyopencv.OpenCvWebcam;
 
 @Config
 public class OpenCVCamera implements Subsystem {
-    private static final double DUCK_MIDDLE_X = 130;
-    private static final double DUCK_RIGHT_X = 430;
+    private static final double DUCK_MIDDLE_X = 200;
+    private static final double DUCK_RIGHT_X = 475;
     private static final double DUCK_TOLERANCE = 100;
 
     public enum DuckPosition {
@@ -57,7 +57,7 @@ public class OpenCVCamera implements Subsystem {
                  * For a rear facing camera or a webcam, rotation is defined assuming the camera is facing
                  * away from the user.
                  */
-                webcam.startStreaming(640, 480, OpenCvCameraRotation.UPRIGHT);
+                webcam.startStreaming(640, 480, OpenCvCameraRotation.UPSIDE_DOWN);
             }
 
             @Override
@@ -71,13 +71,17 @@ public class OpenCVCamera implements Subsystem {
     }
 
     public DuckPosition getDuckPosition() {
-        double x = (pipeline.getX());
+        double x = pipeline.getX();
         if (Math.abs(x - DUCK_MIDDLE_X) < DUCK_TOLERANCE)
             return DuckPosition.MIDDLE;
         else if (Math.abs(x - DUCK_RIGHT_X) < DUCK_TOLERANCE)
             return DuckPosition.RIGHT;
         else
             return DuckPosition.LEFT;
+    }
+
+    public double getDuckX() {
+        return pipeline.getX();
     }
 
     public double getRecognitionArea() {
@@ -90,6 +94,6 @@ public class OpenCVCamera implements Subsystem {
 
     @Override
     public void update(TelemetryPacket packet) {
-
+        packet.put("Duck Position", getDuckPosition());
     }
 }

@@ -17,7 +17,8 @@ public class Pipeline extends OpenCvPipeline {
     public static int CV_THRESHOLD = 150;
     static final Scalar BLUE = new Scalar(0, 0, 255);
     static final int CONTOUR_LINE_THICKNESS = 2;
-    public static double MIN_RECT_AREA = 20000;
+    public static double MIN_RECT_AREA = 0;
+    static final Rect CROP_RECT = new Rect();
 
     Mat YCrCb = new Mat();
     Mat Cb = new Mat();
@@ -51,6 +52,10 @@ public class Pipeline extends OpenCvPipeline {
         Imgproc.dilate(output, output, dilateElement);
     }
 
+    void cropInput(Mat input, Rect cropRect) {
+        input = input.submat(cropRect);
+    }
+
     @Override
     public void init(Mat firstFrame) {
         inputToCb(firstFrame);
@@ -81,6 +86,7 @@ public class Pipeline extends OpenCvPipeline {
         } else {
             bestRect = null;
         }
+        Imgproc.rectangle(rectsOnPlainImageMat, CROP_RECT.tl(), CROP_RECT.br(), BLUE, CONTOUR_LINE_THICKNESS);
         /*
         for (Rect rect : boundingBoxes) {
             Imgproc.rectangle(rectsOnPlainImageMat, rect.tl(), rect.br(), BLUE, CONTOUR_LINE_THICKNESS);

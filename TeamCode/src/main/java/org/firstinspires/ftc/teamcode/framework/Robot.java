@@ -109,6 +109,10 @@ public class Robot {
         }
     }
 
+    public boolean commandsFinished() {
+        return commands.isEmpty();
+    }
+
     public DcMotorEx getMotor(String deviceName) {
         CachingDcMotorEx motor = new CachingDcMotorEx(hardwareMap.get(DcMotorEx.class, deviceName));
         listeners.add(motor);
@@ -154,6 +158,10 @@ public class Robot {
             this.commands.add(command);
             command.start();
         }
+    }
+
+    public void clearCommands() {
+        commands.clear();
     }
 
     public void runCommand(Command command) {
