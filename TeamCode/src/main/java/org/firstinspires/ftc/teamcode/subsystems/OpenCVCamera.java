@@ -7,6 +7,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.teamcode.framework.Robot;
 import org.firstinspires.ftc.teamcode.framework.Subsystem;
+import org.firstinspires.ftc.teamcode.opmodes.MatchState;
 import org.firstinspires.ftc.teamcode.vision.Pipeline;
 import org.openftc.easyopencv.OpenCvCamera;
 import org.openftc.easyopencv.OpenCvCameraFactory;
@@ -15,9 +16,12 @@ import org.openftc.easyopencv.OpenCvWebcam;
 
 @Config
 public class OpenCVCamera implements Subsystem {
-    private static final double DUCK_MIDDLE_X = 200;
-    private static final double DUCK_RIGHT_X = 475;
-    private static final double DUCK_TOLERANCE = 100;
+    private static final double DUCK_MIDDLE_X_BLUE = 56;
+    private static final double DUCK_RIGHT_X_BLUE = 82;
+    private static final double DUCK_TOLERANCE_BLUE = 15;
+    private static final double DUCK_MIDDLE_X_RED = 100;
+    private static final double DUCK_RIGHT_X_RED = 182;
+    private static final double DUCK_TOLERANCE_RED = 40;
 
     public enum DuckPosition {
         LEFT,
@@ -72,12 +76,21 @@ public class OpenCVCamera implements Subsystem {
 
     public DuckPosition getDuckPosition() {
         double x = pipeline.getX();
-        if (Math.abs(x - DUCK_MIDDLE_X) < DUCK_TOLERANCE)
-            return DuckPosition.MIDDLE;
-        else if (Math.abs(x - DUCK_RIGHT_X) < DUCK_TOLERANCE)
-            return DuckPosition.RIGHT;
-        else
-            return DuckPosition.LEFT;
+        switch (MatchState.CurrentAlliance) {
+            case BLUE:
+                if (Math.abs(x - DUCK_MIDDLE_X_BLUE) < DUCK_TOLERANCE_BLUE)
+                    return DuckPosition.MIDDLE;
+                else if (Math.abs(x - DUCK_RIGHT_X_BLUE) < DUCK_TOLERANCE_BLUE)
+                    return DuckPosition.RIGHT;
+                break;
+            case RED:
+                if (Math.abs(x - DUCK_MIDDLE_X_RED) < DUCK_TOLERANCE_RED)
+                    return DuckPosition.MIDDLE;
+                else if (Math.abs(x - DUCK_RIGHT_X_RED) < DUCK_TOLERANCE_RED)
+                    return DuckPosition.RIGHT;
+                break;
+        }
+        return DuckPosition.LEFT;
     }
 
     public double getDuckX() {

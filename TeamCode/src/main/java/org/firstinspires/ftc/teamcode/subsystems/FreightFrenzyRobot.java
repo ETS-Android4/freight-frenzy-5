@@ -10,7 +10,6 @@ public class FreightFrenzyRobot extends Robot {
     public final DuckSpinner duck;
     public final Intake intake;
     public final Lift lift;
-    public final LEDRiver ledRiver;
     public FreightFrenzyRobot(LinearOpMode opMode) {
         super(opMode);
         drive = new Drivetrain(this);
@@ -21,6 +20,5 @@ public class FreightFrenzyRobot extends Robot {
         registerSubsystem(intake);
         lift = new Lift(this);
         registerSubsystem(lift);
-        ledRiver = opMode.hardwareMap.get(LEDRiver.IMPL, "ledriver");
     }
 }

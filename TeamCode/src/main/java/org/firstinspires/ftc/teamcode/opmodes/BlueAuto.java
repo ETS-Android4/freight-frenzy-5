@@ -16,7 +16,7 @@ import org.firstinspires.ftc.teamcode.subsystems.OpenCVCamera;
 
 @Config
 @Autonomous
-public class Auto  extends LinearOpMode {
+public class BlueAuto extends LinearOpMode {
     public static Pose2d INIT_POSE = new Pose2d(-32,64,0);
     public static Pose2d DUCK_SPIN_POSE = new Pose2d(-58, 56, Math.toRadians(90));
     public static double DUCK_SPIN_POWER = 0.25;
@@ -34,10 +34,13 @@ public class Auto  extends LinearOpMode {
         clock = NanoClock.system();
 
         robot.drive.setPoseEstimate(INIT_POSE);
+        MatchState.CurrentAlliance = MatchState.Alliance.BLUE;
+        MatchState.CurrentPosition = MatchState.AutoPosition.DUCK_SPIN;
 
         while (!isStarted() && !isStopRequested()) {
             robot.update();
             telemetry.addData("Duck Position", camera.getDuckPosition());
+            telemetry.addData("Duck X", camera.getDuckX());
             telemetry.addData("Recognition Area", camera.getRecognitionArea());
             telemetry.update();
             switch (camera.getDuckPosition()) {

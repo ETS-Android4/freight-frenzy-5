@@ -1,9 +1,7 @@
 package org.firstinspires.ftc.teamcode.opmodes.testing;
 
-import static org.firstinspires.ftc.teamcode.opmodes.Auto.INIT_POSE;
+import static org.firstinspires.ftc.teamcode.opmodes.BlueAuto.INIT_POSE;
 
-import com.acmerobotics.dashboard.FtcDashboard;
-import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;

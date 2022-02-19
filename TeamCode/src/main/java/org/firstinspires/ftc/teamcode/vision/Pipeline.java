@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.vision;
 
+import org.firstinspires.ftc.teamcode.opmodes.MatchState;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
@@ -18,8 +19,10 @@ public class Pipeline extends OpenCvPipeline {
     static final Scalar BLUE = new Scalar(0, 0, 255);
     static final int CONTOUR_LINE_THICKNESS = 2;
     public static double MIN_RECT_AREA = 0;
-    static final Rect CROP_RECT = new Rect();
+    static final Rect CROP_RECT = new Rect(0,200,200,150);
+    static final Rect CROP_RECT_2 = new Rect(400,190,240,150);
 
+    Mat croppedInput = new Mat();
     Mat YCrCb = new Mat();
     Mat Cb = new Mat();
     Mat thresholdMat = new Mat();
@@ -32,6 +35,18 @@ public class Pipeline extends OpenCvPipeline {
 
     Mat erodeElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(3, 3));
     Mat dilateElement = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(6, 6));
+
+    void cropInput(Mat input)
+    {
+        switch (MatchState.CurrentAlliance) {
+            case BLUE:
+                croppedInput = new Mat(input, CROP_RECT);
+                break;
+            case RED:
+                croppedInput = new Mat(input,CROP_RECT_2);
+        }
+    }
+
 
     void inputToCb(Mat input)
     {
@@ -63,7 +78,8 @@ public class Pipeline extends OpenCvPipeline {
 
     @Override
     public Mat processFrame(Mat input) {
-        inputToCb(input);
+        cropInput(input);
+        inputToCb(croppedInput);
         Imgproc.GaussianBlur(Cb, Cb, new Size(5,5),0);
 
         Imgproc.threshold(Cb, thresholdMat, CV_THRESHOLD, 255, Imgproc.THRESH_BINARY);
@@ -79,14 +95,14 @@ public class Pipeline extends OpenCvPipeline {
             boundingBoxes.add(Imgproc.boundingRect(contour));
         }
         Collections.sort(boundingBoxes, (rect, t1) -> (int) (t1.area() - rect.area()));
-        input.copyTo(rectsOnPlainImageMat);
+        croppedInput.copyTo(rectsOnPlainImageMat);
         if (boundingBoxes.size() > 0 && boundingBoxes.get(0).area() > MIN_RECT_AREA) {
             bestRect = boundingBoxes.get(0);
             Imgproc.rectangle(rectsOnPlainImageMat, bestRect.tl(), bestRect.br(), BLUE, CONTOUR_LINE_THICKNESS);
         } else {
             bestRect = null;
         }
-        Imgproc.rectangle(rectsOnPlainImageMat, CROP_RECT.tl(), CROP_RECT.br(), BLUE, CONTOUR_LINE_THICKNESS);
+        //Imgproc.rectangle(rectsOnPlainImageMat, CROP_RECT_2.tl(), CROP_RECT_2.br(), BLUE, CONTOUR_LINE_THICKNESS);
         /*
         for (Rect rect : boundingBoxes) {
             Imgproc.rectangle(rectsOnPlainImageMat, rect.tl(), rect.br(), BLUE, CONTOUR_LINE_THICKNESS);

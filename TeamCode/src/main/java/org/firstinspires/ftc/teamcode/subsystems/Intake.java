@@ -27,7 +27,7 @@ public class Intake implements Subsystem {
     public static double WRIST_RETRACT_POSITION = 0.01;
     public static double DISTANCE_SENSOR_INTAKE_THRESHOLD = 40;
     public static double DISTANCE_SENSOR_OUTTAKE_THRESHOLD = 100;
-    public static double INTAKE_EXTEND_TIME = 1;
+    public static double INTAKE_EXTEND_TIME = 1.5;
 
     private boolean extended = false;
     private IntakeState state = IntakeState.RETRACT;
@@ -66,6 +66,10 @@ public class Intake implements Subsystem {
         return intake.getCurrent(CurrentUnit.AMPS);
     }
 
+    public IntakeState getIntakeState() {
+        return state;
+    }
+
     public void cycleWrist() {
         initialTimestamp = clock.seconds();
         switch (state) {
@@ -88,11 +92,12 @@ public class Intake implements Subsystem {
                 break;
             case INTAKE:
                 extended = true;
-                if (clock.seconds() - initialTimestamp > INTAKE_EXTEND_TIME)
+                if (clock.seconds() - initialTimestamp > INTAKE_EXTEND_TIME) {
                     intakePower = 0.7;
-                if (cachedDistance < DISTANCE_SENSOR_INTAKE_THRESHOLD) {
-                    state = IntakeState.OUTTAKE;
-                    initialTimestamp = clock.seconds();
+                    if (cachedDistance < DISTANCE_SENSOR_INTAKE_THRESHOLD) {
+                        state = IntakeState.OUTTAKE;
+                        initialTimestamp = clock.seconds();
+                    }
                 }
                 break;
             case OUTTAKE:
@@ -100,13 +105,13 @@ public class Intake implements Subsystem {
                 intakePower = 0.5;
                 if (clock.seconds() - initialTimestamp > INTAKE_EXTEND_TIME) {
                     intakePower = -0.7;
-                    if (cachedDistance > DISTANCE_SENSOR_OUTTAKE_THRESHOLD) {
+                    if (clock.seconds() - initialTimestamp > 1.5 * INTAKE_EXTEND_TIME && cachedDistance > DISTANCE_SENSOR_OUTTAKE_THRESHOLD) {
                         state = IntakeState.RETRACT;
                     }
                 }
         }
         if (intake.getCurrent(CurrentUnit.AMPS) > 4) {
-            intakePower *= -0.2;
+            intakePower *= -0.5;
         }
         if (intakePower > 0 && hasFreight())
             intake.setPower(0);

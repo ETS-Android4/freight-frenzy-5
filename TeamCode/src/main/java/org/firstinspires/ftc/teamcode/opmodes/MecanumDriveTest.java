@@ -55,13 +55,16 @@ public class MecanumDriveTest extends LinearOpMode {
                 .setColor(2, Color.BLACK);
         ledRiver.setPattern(LEDRiver.Pattern.COLOR_WHEEL.builder()).apply();
         boolean lastHasFreight = false;
+        if (MatchState.CurrentAlliance == MatchState.Alliance.RED) {
+            DUCK_SPINNER_MULTIPLIER = -DUCK_SPINNER_MULTIPLIER;
+        }
 
         waitForStart();
 
         while (!isStopRequested()) {
             robot.update();
             double xPower = -gamepad1.left_stick_y;
-            double yPower = WALL_RUNNER_MULTIPLIER * gamepad1.right_trigger - gamepad1.left_stick_x;
+            double yPower = WALL_RUNNER_MULTIPLIER * gamepad1.left_trigger - gamepad1.left_stick_x;
             if (gamepad1.b) {
                 yPower *= 2;
             }
@@ -74,10 +77,10 @@ public class MecanumDriveTest extends LinearOpMode {
                 mecanumDrive.setTankPower(0);
                 mecanumDrive.extendOdometry();
             }
-            if (gamepad1.left_bumper) {
+            if (gamepad1.right_bumper) {
                 intake.setIntakePower(-1);
             } else {
-                double intakePower = 0.8 * gamepad1.left_trigger;
+                double intakePower = 0.8 * gamepad1.right_trigger;
                 intake.setIntakePower(intakePower);
             }
             if (stickyGamepad2.a) {
@@ -112,7 +115,7 @@ public class MecanumDriveTest extends LinearOpMode {
                 lift.setLiftPower(gamepad2.left_trigger);
             }
             telemetry.addData("Lift position", lift.getLiftPosition());
-            telemetry.addData("Intake speed", gamepad1.left_trigger);
+            telemetry.addData("Intake speed", gamepad1.right_trigger);
             telemetry.update();
         }
     }

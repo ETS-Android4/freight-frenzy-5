@@ -20,7 +20,7 @@ import org.firstinspires.ftc.teamcode.framework.Subsystem;
 public class Lift implements Subsystem {
     public static final double PULLEY_RADIUS = 0.626496;
     public static final double TICKS_PER_REV = 103.8;
-    public static PIDCoefficients LIFT_PID_COEFFICIENTS = new PIDCoefficients(0.2, 0, 0.01);
+    public static PIDCoefficients LIFT_PID_COEFFICIENTS = new PIDCoefficients(0.15, 0, 0.01);
     public static double kG = 0.05;
     public static double ARM_MAX_VEL = 4;
     public static double ARM_MAX_ACCEL = 5;
@@ -40,15 +40,16 @@ public class Lift implements Subsystem {
     public static double ARM_RETRACT_POSITION = 0.07;
     public static double ARM_LIFT_POSITION = 0.3;
     public static double ARM_THIRD_LEVEL_POSITION = 0.7;
-    public static double ARM_SECOND_LEVEL_POSITION = 0.6;
-    public static double ARM_FIRST_LEVEL_POSITION = 0.5;
-    public static double DUMPER_RETRACT_POSITION = 0.35;
-    public static double DUMPER_LIFTING_POSITION = 0.2;
-    public static double DUMPER_DUMP_POSITION = 0.9;
-    public static double LOCKER_LOCK_POSITION = 0.05;
-    public static double LOCKER_UNLOCK_POSITION = 0.5;
-    public static double LOCKER_HOLDING_POSITION = 0.2;
-    public static double ARM_EXTEND_TIME = 0.5;
+    public static double ARM_SECOND_LEVEL_POSITION = 0.9;
+    public static double ARM_FIRST_LEVEL_POSITION = 0.87;
+    public static double DUMPER_RETRACT_POSITION = 0.37;
+    public static double DUMPER_LIFTING_POSITION = 0.22;
+    public static double DUMPER_AUTO_POSITION = 0.65;
+    public static double DUMPER_DUMP_POSITION = 0.95;
+    public static double LOCKER_LOCK_POSITION = 0.6;
+    public static double LOCKER_UNLOCK_POSITION = 0.3;
+    public static double LOCKER_HOLDING_POSITION = 0.5;
+    public static double ARM_EXTEND_TIME = 0.7;
     private OuttakeState outtakeState = OuttakeState.RETRACT;
     private HubLevel hubLevel = HubLevel.THIRD;
     private LiftMode liftMode = LiftMode.PID;
@@ -56,12 +57,14 @@ public class Lift implements Subsystem {
     private boolean armMoving;
     private MotionProfile armMotionProfile;
 
-    public static double LIFT_EXTEND_ARM_POSITION = 9;
     public static double LIFT_DUMP_POSITION = 20;
+    public static double LIFT_SECOND_LEVEL_POSITION = 16;
     public static double LIFT_RETRACT_POSITION = 0;
-    public static double LIFT_EXTEND_TIME = 0.5;
+    public static double LIFT_EXTEND_TIME = 1.5;
 
     public enum OuttakeState {
+        AUTO,
+        AUTO_EXTEND,
         RETRACT,
         EXTEND_ARM,
         EXTEND,
@@ -101,10 +104,12 @@ public class Lift implements Subsystem {
         return PULLEY_RADIUS * 2 * Math.PI * ticks / TICKS_PER_REV;
     }
 
+    //never used lol
     public static int encoderInchesToTicks (double inches) {
         return (int) (inches * TICKS_PER_REV / PULLEY_RADIUS / 2 / Math.PI);
     }
 
+    //deprecated
     public static double calculateDumperPosition(double armPosition, double dumpPosition) {
         return -armPosition + 1 + dumpPosition;
     }
@@ -117,6 +122,10 @@ public class Lift implements Subsystem {
         liftMode = LiftMode.PID;
         liftPidController.reset();
         switch (outtakeState) {
+            case AUTO:
+                outtakeState = OuttakeState.AUTO_EXTEND;
+                initialTimestamp = clock.seconds();
+                break;
             case RETRACT:
                 outtakeState = OuttakeState.EXTEND_ARM;
                 //liftPidController.setTargetPosition(LIFT_DUMP_POSITION);
@@ -155,8 +164,9 @@ public class Lift implements Subsystem {
     public double getLiftExtendPosition() {
         switch (hubLevel) {
             case THIRD:
-            case SECOND:
                 return LIFT_DUMP_POSITION;
+            case SECOND:
+                return LIFT_SECOND_LEVEL_POSITION;
             case FIRST:
                 return LIFT_RETRACT_POSITION;
         }
@@ -175,6 +185,10 @@ public class Lift implements Subsystem {
         return encoderTicksToInches(lift.getCurrentPosition());
     }
 
+    public boolean isLiftExtended() {
+        return Math.abs(liftPidController.getLastError()) < 1;
+    }
+
     public MotionProfile generateArmMotionProfile(double initialPosition, double endPosition) {
         return MotionProfileGenerator.generateSimpleMotionProfile(
                 new MotionState(initialPosition, 0, 0, 0),
@@ -188,9 +202,44 @@ public class Lift implements Subsystem {
         return outtakeState;
     }
 
+    public void autoState() {
+        outtakeState = OuttakeState.AUTO;
+    }
+
     @Override
     public void update(TelemetryPacket packet) {
         switch (outtakeState) {
+            case AUTO:
+                lockerPosition = LOCKER_LOCK_POSITION;
+                dumpPosition = DUMPER_AUTO_POSITION;
+                armPosition = ARM_RETRACT_POSITION;
+                break;
+            case AUTO_EXTEND:
+                lockerPosition = LOCKER_LOCK_POSITION;
+                dumpPosition = DUMPER_AUTO_POSITION;
+                if (clock.seconds() - initialTimestamp >= LIFT_EXTEND_TIME && liftPidController.getTargetPosition() != getLiftExtendPosition()) {
+                    liftPidController.setTargetPosition(getLiftExtendPosition());
+                }
+                if (!armMoving) {
+                    armMoving = true;
+                    initialTimestamp = clock.seconds();
+                    armMotionProfile = generateArmMotionProfile(ARM_RETRACT_POSITION, getArmExtendPosition());
+                }
+                if (armMoving) {
+                    if (clock.seconds() - initialTimestamp >= armMotionProfile.duration()) {
+                        armMoving = false;
+                        outtakeState = OuttakeState.EXTEND;
+                        liftPidController.setTargetPosition(getLiftExtendPosition());
+                    } else {
+                        armPosition = armMotionProfile.get(clock.seconds() - initialTimestamp).getX();
+                        if (armPosition > ARM_LIFT_POSITION) {
+                            dumpPosition = DUMPER_DUMP_POSITION;
+                        } else {
+                            dumpPosition = DUMPER_AUTO_POSITION;
+                        }
+                    }
+                }
+                break;
             case RETRACT:
                 lockerPosition = LOCKER_HOLDING_POSITION;
                 dumpPosition = DUMPER_RETRACT_POSITION;
@@ -250,6 +299,7 @@ public class Lift implements Subsystem {
                 }
                 break;
         }
+        packet.put("Outtake State", outtakeState);
         lift.setPower(liftPidController.update(getLiftPosition()));
         arm1.setPosition(armPosition);
         arm2.setPosition(armPosition);
