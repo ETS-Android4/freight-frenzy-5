@@ -23,7 +23,7 @@ import org.firstinspires.ftc.teamcode.subsystems.SimpleMecanumDrive;
 @TeleOp
 public class MecanumDriveTest extends LinearOpMode {
     public static double WALL_RUNNER_MULTIPLIER = 0.15;
-    public static double DUCK_SPINNER_MULTIPLIER = 0.3;
+    public static double DUCK_SPINNER_MULTIPLIER = 1;
     @Override
     public void runOpMode() throws InterruptedException {
         LynxModule hub = hardwareMap.get(LynxModule.class,"Expansion Hub 2");
@@ -41,8 +41,8 @@ public class MecanumDriveTest extends LinearOpMode {
         robot.registerSubsystem(intake);
         Lift lift = new Lift(robot);
         robot.registerSubsystem(lift);
-        CappingClaw claw = new CappingClaw(robot);
-        robot.registerSubsystem(claw);
+        //CappingClaw claw = new CappingClaw(robot);
+        //robot.registerSubsystem(claw);
         StickyGamepad stickyGamepad1 = new StickyGamepad(gamepad1);
         robot.addListener(stickyGamepad1);
         StickyGamepad stickyGamepad2 = new StickyGamepad(gamepad2);
@@ -94,9 +94,9 @@ public class MecanumDriveTest extends LinearOpMode {
                 lift.setHubLevel(Lift.HubLevel.FIRST);
             }
             if (stickyGamepad2.y) {
-                claw.forwardCycle();
+                //claw.forwardCycle();
             } else if (stickyGamepad2.x) {
-                claw.backwardCycle();
+                //claw.backwardCycle();
             }
             if (stickyGamepad1.a) {
                 intake.cycleWrist();
