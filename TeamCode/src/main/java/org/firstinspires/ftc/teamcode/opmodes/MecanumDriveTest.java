@@ -47,16 +47,10 @@ public class MecanumDriveTest extends LinearOpMode {
         robot.addListener(stickyGamepad1);
         StickyGamepad stickyGamepad2 = new StickyGamepad(gamepad2);
         robot.addListener(stickyGamepad2);
-        LEDRiver ledRiver = hardwareMap.get(LEDRiver.IMPL, "ledriver");
-        ledRiver.setLEDCount(110);
-        ledRiver.setMode(LEDRiver.Mode.PATTERN)
-                .setColor(0,Color.YELLOW)
-                .setColor(1,Color.WHITE)
-                .setColor(2, Color.BLACK);
-        ledRiver.setPattern(LEDRiver.Pattern.COLOR_WHEEL.builder()).apply();
         boolean lastHasFreight = false;
         if (MatchState.CurrentAlliance == MatchState.Alliance.RED) {
             DUCK_SPINNER_MULTIPLIER = -DUCK_SPINNER_MULTIPLIER;
+            WALL_RUNNER_MULTIPLIER = -WALL_RUNNER_MULTIPLIER;
         }
 
         waitForStart();
@@ -70,7 +64,7 @@ public class MecanumDriveTest extends LinearOpMode {
             }
             double oPower = -gamepad1.right_stick_x;
             mecanumDrive.setDrivePower(new Pose2d(xPower, yPower, oPower));
-            if (gamepad1.right_bumper) {
+            if (gamepad1.left_bumper) {
                 mecanumDrive.setTankPower(-2*gamepad1.left_stick_y);
                 mecanumDrive.retractOdometry();
             } else {
@@ -83,6 +77,7 @@ public class MecanumDriveTest extends LinearOpMode {
                 double intakePower = 0.8 * gamepad1.right_trigger;
                 intake.setIntakePower(intakePower);
             }
+
             if (stickyGamepad2.a) {
                 lift.cycleOuttake();
             }
@@ -93,12 +88,19 @@ public class MecanumDriveTest extends LinearOpMode {
             } else  if (gamepad2.dpad_down) {
                 lift.setHubLevel(Lift.HubLevel.FIRST);
             }
+            /*
             if (stickyGamepad2.y) {
-                //claw.forwardCycle();
+                claw.forwardCycle();
             } else if (stickyGamepad2.x) {
-                //claw.backwardCycle();
+                claw.backwardCycle();
             }
-            if (stickyGamepad1.a) {
+
+             */
+            if (stickyGamepad1.y) {
+                intake.setIntakeDirection(Intake.IntakeDirection.FRONT);
+                intake.cycleWrist();
+            } else if (stickyGamepad1.a) {
+                intake.setIntakeDirection(Intake.IntakeDirection.REAR);
                 intake.cycleWrist();
             }
             if (intake.hasFreight() && !lastHasFreight) {
@@ -108,12 +110,22 @@ public class MecanumDriveTest extends LinearOpMode {
                 mecanumDrive.toggleWallAlign();
             }
             lastHasFreight = intake.hasFreight();
-            duckSpinner.setSpinnerPower(DUCK_SPINNER_MULTIPLIER*gamepad2.right_trigger);
+            if (gamepad2.left_bumper) {
+                duckSpinner.setSpinnerPower(0);
+            } else if (gamepad2.right_bumper) {
+                duckSpinner.setSpinnerPower(1);
+            } else {
+                duckSpinner.setSpinnerPower(0.5);
+            }
+            /*
             if (gamepad2.left_bumper) {
                 lift.setLiftPower(-1);
             } else {
                 lift.setLiftPower(gamepad2.left_trigger);
             }
+
+             */
+            telemetry.addData("Current Alliance", MatchState.CurrentAlliance);
             telemetry.addData("Lift position", lift.getLiftPosition());
             telemetry.addData("Intake speed", gamepad1.right_trigger);
             telemetry.update();

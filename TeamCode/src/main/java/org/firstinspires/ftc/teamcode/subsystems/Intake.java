@@ -16,21 +16,22 @@ import org.firstinspires.ftc.teamcode.framework.Subsystem;
 
 @Config
 public class Intake implements Subsystem {
-    private DcMotorEx intake;
-    private Servo leftWrist, rightWrist;
-    private Rev2mDistanceSensor distanceSensor;
+    private DcMotorEx intakeFront, intakeRear;
+    private Servo leftWristFront, rightWristFront, leftWristRear, rightWristRear;
+    private Rev2mDistanceSensor distanceSensorFront, distanceSensorRear;
     private NanoClock clock;
 
     private double intakePower = 0;
+    private double wristPosition = WRIST_RETRACT_POSITION;
 
-    public static double WRIST_EXTEND_POSITION = 0.9;
-    public static double WRIST_RETRACT_POSITION = 0.01;
+    public static double WRIST_EXTEND_POSITION = 0.97;
+    public static double WRIST_RETRACT_POSITION = 0.1;
     public static double DISTANCE_SENSOR_INTAKE_THRESHOLD = 40;
     public static double DISTANCE_SENSOR_OUTTAKE_THRESHOLD = 100;
     public static double INTAKE_EXTEND_TIME = 1.5;
 
-    private boolean extended = false;
     private IntakeState state = IntakeState.RETRACT;
+    private IntakeDirection direction = IntakeDirection.FRONT;
     private double cachedDistance = 500;
     private double initialTimestamp = 0;
 
@@ -40,14 +41,26 @@ public class Intake implements Subsystem {
         OUTTAKE
     }
 
+    public enum IntakeDirection {
+        FRONT,
+        REAR
+    }
+
     public Intake(Robot robot) {
-        intake = robot.getMotor("rightEncoder");
-        intake.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        intake.setDirection(DcMotorSimple.Direction.REVERSE);
-        leftWrist = robot.getServo("intakeLeft");
-        rightWrist = robot.getServo("intakeRight");
-        leftWrist.setDirection(Servo.Direction.REVERSE);
-        distanceSensor = robot.getHardwareMap().get(Rev2mDistanceSensor.class, "tof");
+        intakeFront = robot.getMotor("rightEncoder");
+        intakeRear = robot.getMotor("leftEncoder");
+        intakeFront.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        intakeFront.setDirection(DcMotorSimple.Direction.REVERSE);
+        intakeRear.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        intakeRear.setDirection(DcMotorSimple.Direction.REVERSE);
+        leftWristFront = robot.getServo("intakeLeftFront");
+        rightWristFront = robot.getServo("intakeRightFront");
+        leftWristRear = robot.getServo("intakeLeftRear");
+        rightWristRear = robot.getServo("intakeRightRear");
+        leftWristFront.setDirection(Servo.Direction.REVERSE);
+        leftWristRear.setDirection(Servo.Direction.REVERSE);
+        distanceSensorFront = robot.getHardwareMap().get(Rev2mDistanceSensor.class, "tofFront");
+        distanceSensorRear = robot.getHardwareMap().get(Rev2mDistanceSensor.class, "tofRear");
         clock = NanoClock.system();
     }
 
@@ -63,7 +76,7 @@ public class Intake implements Subsystem {
     }
 
     public double getIntakeCurrent() {
-        return intake.getCurrent(CurrentUnit.AMPS);
+        return intakeFront.getCurrent(CurrentUnit.AMPS);
     }
 
     public IntakeState getIntakeState() {
@@ -83,15 +96,29 @@ public class Intake implements Subsystem {
         }
     }
 
+    public void setIntakeDirection(IntakeDirection direction) {
+        if (direction != this.direction) {
+            state = IntakeState.RETRACT;
+        }
+        this.direction = direction;
+    }
+
     @Override
     public void update(TelemetryPacket packet) {
-        cachedDistance = distanceSensor.getDistance(DistanceUnit.MM);
+        switch (direction) {
+            case FRONT:
+                cachedDistance = distanceSensorFront.getDistance(DistanceUnit.MM);
+                break;
+            case REAR:
+                cachedDistance = distanceSensorRear.getDistance(DistanceUnit.MM);
+                break;
+        }
         switch (state) {
             case RETRACT:
-                extended = false;
+                wristPosition = WRIST_RETRACT_POSITION;
                 break;
             case INTAKE:
-                extended = true;
+                wristPosition = WRIST_EXTEND_POSITION;
                 if (clock.seconds() - initialTimestamp > INTAKE_EXTEND_TIME) {
                     intakePower = 0.7;
                     if (cachedDistance < DISTANCE_SENSOR_INTAKE_THRESHOLD) {
@@ -101,30 +128,40 @@ public class Intake implements Subsystem {
                 }
                 break;
             case OUTTAKE:
-                extended = false;
-                intakePower = 0.5;
+                wristPosition = WRIST_RETRACT_POSITION;
+                intakePower = -0.1;
                 if (clock.seconds() - initialTimestamp > INTAKE_EXTEND_TIME) {
-                    intakePower = -0.7;
+                    intakePower = -1;
                     if (clock.seconds() - initialTimestamp > 1.5 * INTAKE_EXTEND_TIME && cachedDistance > DISTANCE_SENSOR_OUTTAKE_THRESHOLD) {
                         state = IntakeState.RETRACT;
                     }
                 }
         }
-        if (intake.getCurrent(CurrentUnit.AMPS) > 4) {
+        /*
+        if (intakeFront.getCurrent(CurrentUnit.AMPS) > 4) {
             intakePower *= -0.5;
         }
-        if (intakePower > 0 && hasFreight())
-            intake.setPower(0);
-        else
-            intake.setPower(intakePower);
-        if (extended) {
-            leftWrist.setPosition(WRIST_EXTEND_POSITION);
-            rightWrist.setPosition(WRIST_EXTEND_POSITION);
-        } else {
-            leftWrist.setPosition(WRIST_RETRACT_POSITION);
-            rightWrist.setPosition(WRIST_RETRACT_POSITION);
+
+         */
+        switch (direction) {
+            case FRONT:
+                leftWristFront.setPosition(wristPosition);
+                rightWristFront.setPosition(wristPosition);
+                leftWristRear.setPosition(WRIST_RETRACT_POSITION);
+                rightWristRear.setPosition(WRIST_RETRACT_POSITION);
+                intakeFront.setPower(intakePower);
+                intakeRear.setPower(0);
+                break;
+            case REAR:
+                leftWristRear.setPosition(wristPosition);
+                rightWristRear.setPosition(wristPosition);
+                leftWristFront.setPosition(WRIST_RETRACT_POSITION);
+                rightWristFront.setPosition(WRIST_EXTEND_POSITION);
+                intakeRear.setPower(intakePower);
+                intakeFront.setPower(0);
+                break;
         }
-        packet.put("Intake Current", intake.getCurrent(CurrentUnit.AMPS));
-        packet.put("TOF Distance", distanceSensor.getDistance(DistanceUnit.MM));
+        packet.put("Intake Current", intakeFront.getCurrent(CurrentUnit.AMPS));
+        packet.put("TOF Distance", distanceSensorFront.getDistance(DistanceUnit.MM));
     }
 }

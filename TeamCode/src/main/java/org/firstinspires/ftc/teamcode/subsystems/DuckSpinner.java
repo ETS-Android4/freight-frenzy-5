@@ -62,6 +62,7 @@ public class DuckSpinner implements Subsystem {
     }
 
     public void setSpinnerPower(double power) { //input: 0 to 1
+        /*
         double currentTime = System.nanoTime();
         double timeDiff = currentTime - prevTime;
         double powerIncrease = timeDiff * POWER_INCREASE_FACTOR;
@@ -81,6 +82,9 @@ public class DuckSpinner implements Subsystem {
         spinnerPower = ((newPower * sign) + 1.0 ) / 2.0; //convert to 0/0.5/1 range
         Log.i("duckSpinner", "power:"+ spinnerPower + " previous: "+ prevPower +
                 " increased: "+ powerIncrease + "sign: " + sign);
+
+         */
+        spinnerPower = power;
     }
 
     @Override

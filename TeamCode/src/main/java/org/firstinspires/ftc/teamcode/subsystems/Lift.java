@@ -12,6 +12,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.TouchSensor;
 
 import org.firstinspires.ftc.teamcode.framework.Robot;
 import org.firstinspires.ftc.teamcode.framework.Subsystem;
@@ -19,11 +20,11 @@ import org.firstinspires.ftc.teamcode.framework.Subsystem;
 @Config
 public class Lift implements Subsystem {
     public static final double PULLEY_RADIUS = 0.626496;
-    public static final double TICKS_PER_REV = 103.8;
-    public static PIDCoefficients LIFT_PID_COEFFICIENTS = new PIDCoefficients(0.15, 0, 0.01);
-    public static double kG = 0.05;
-    public static double ARM_MAX_VEL = 4;
-    public static double ARM_MAX_ACCEL = 5;
+    public static final double TICKS_PER_REV = 101.08;
+    public static PIDCoefficients LIFT_PID_COEFFICIENTS = new PIDCoefficients(0.15, 0.05, 0.01);
+    public static double kG = 0.0;
+    public static double ARM_MAX_VEL = 3;
+    public static double ARM_MAX_ACCEL = 3;
 
     private DcMotorEx lift;
     private double liftPower = 0;
@@ -37,19 +38,23 @@ public class Lift implements Subsystem {
     private double dumpPosition = DUMPER_RETRACT_POSITION;
     private double lockerPosition = LOCKER_UNLOCK_POSITION;
 
-    public static double ARM_RETRACT_POSITION = 0.07;
-    public static double ARM_LIFT_POSITION = 0.3;
+    private TouchSensor limitSwitch;
+
+    public static double ARM_RETRACT_POSITION = 0.03;
+    public static double ARM_PICK_FREIGHT_POSITION = 0;
+    public static double ARM_LIFT_POSITION = 0.4;
     public static double ARM_THIRD_LEVEL_POSITION = 0.7;
     public static double ARM_SECOND_LEVEL_POSITION = 0.9;
     public static double ARM_FIRST_LEVEL_POSITION = 0.87;
-    public static double DUMPER_RETRACT_POSITION = 0.37;
-    public static double DUMPER_LIFTING_POSITION = 0.22;
+    public static double DUMPER_RETRACT_POSITION = 0.67;
+    public static double DUMPER_LIFTING_POSITION = 0.7;
     public static double DUMPER_AUTO_POSITION = 0.65;
-    public static double DUMPER_DUMP_POSITION = 0.95;
-    public static double LOCKER_LOCK_POSITION = 0.6;
-    public static double LOCKER_UNLOCK_POSITION = 0.3;
-    public static double LOCKER_HOLDING_POSITION = 0.5;
+    public static double DUMPER_DUMP_POSITION = 0.1;
+    public static double LOCKER_LOCK_POSITION = 1;
+    public static double LOCKER_UNLOCK_POSITION = 0.5;
+    public static double LOCKER_HOLDING_POSITION = 0.77;
     public static double ARM_EXTEND_TIME = 0.7;
+    public static double ARM_OFFSET = 0;
     private OuttakeState outtakeState = OuttakeState.RETRACT;
     private HubLevel hubLevel = HubLevel.THIRD;
     private LiftMode liftMode = LiftMode.PID;
@@ -59,6 +64,7 @@ public class Lift implements Subsystem {
 
     public static double LIFT_DUMP_POSITION = 20;
     public static double LIFT_SECOND_LEVEL_POSITION = 16;
+    public static double LIFT_FIRST_LEVEL_POSITION = 4;
     public static double LIFT_RETRACT_POSITION = 0;
     public static double LIFT_EXTEND_TIME = 1.5;
 
@@ -66,6 +72,7 @@ public class Lift implements Subsystem {
         AUTO,
         AUTO_EXTEND,
         RETRACT,
+        PICK_FREIGHT,
         EXTEND_ARM,
         EXTEND,
         DUMP,
@@ -80,7 +87,8 @@ public class Lift implements Subsystem {
 
     public enum LiftMode {
         MANUAL,
-        PID
+        PID,
+        RESET
     }
 
     public Lift(Robot robot) {
@@ -90,7 +98,7 @@ public class Lift implements Subsystem {
         dump = robot.getServo("DumpServo");
         locker = robot.getServo("Locker");
         //lift.setDirection(DcMotorSimple.Direction.REVERSE);
-        arm2.setDirection(Servo.Direction.REVERSE);
+        arm1.setDirection(Servo.Direction.REVERSE);
         lift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         lift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
@@ -98,6 +106,7 @@ public class Lift implements Subsystem {
         liftPidController.setOutputBounds(-0.7, 0.8);
 
         clock = NanoClock.system();
+        limitSwitch = robot.getHardwareMap().get(TouchSensor.class, "limitSwitch");
     }
 
     public static double encoderTicksToInches (int ticks) {
@@ -127,7 +136,7 @@ public class Lift implements Subsystem {
                 initialTimestamp = clock.seconds();
                 break;
             case RETRACT:
-                outtakeState = OuttakeState.EXTEND_ARM;
+                outtakeState = OuttakeState.PICK_FREIGHT;
                 //liftPidController.setTargetPosition(LIFT_DUMP_POSITION);
                 initialTimestamp = clock.seconds();
                 break;
@@ -168,7 +177,7 @@ public class Lift implements Subsystem {
             case SECOND:
                 return LIFT_SECOND_LEVEL_POSITION;
             case FIRST:
-                return LIFT_RETRACT_POSITION;
+                return LIFT_FIRST_LEVEL_POSITION;
         }
         return LIFT_DUMP_POSITION;
     }
@@ -245,6 +254,16 @@ public class Lift implements Subsystem {
                 dumpPosition = DUMPER_RETRACT_POSITION;
                 armPosition = ARM_RETRACT_POSITION;
                 break;
+            case PICK_FREIGHT:
+                armPosition = ARM_PICK_FREIGHT_POSITION;
+                lockerPosition = LOCKER_UNLOCK_POSITION;
+                if (clock.seconds() - initialTimestamp >= ARM_EXTEND_TIME * 0.5)
+                    lockerPosition = LOCKER_LOCK_POSITION;
+                if (clock.seconds() - initialTimestamp >= ARM_EXTEND_TIME) {
+                    outtakeState = OuttakeState.EXTEND_ARM;
+                    initialTimestamp = clock.seconds();
+                }
+                break;
             case EXTEND_ARM:
                 lockerPosition = LOCKER_LOCK_POSITION;
                 dumpPosition = DUMPER_LIFTING_POSITION;
@@ -300,8 +319,23 @@ public class Lift implements Subsystem {
                 break;
         }
         packet.put("Outtake State", outtakeState);
-        lift.setPower(liftPidController.update(getLiftPosition()));
-        arm1.setPosition(armPosition);
+        switch (liftMode) {
+            case PID:
+                lift.setPower(liftPidController.update(getLiftPosition()));
+                break;
+            case MANUAL:
+                lift.setPower(liftPower);
+                break;
+            case RESET:
+                lift.setPower(-0.7);
+                if (limitSwitch.isPressed()) {
+                    lift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                    lift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+                    liftMode = LiftMode.PID;
+                }
+                break;
+        }
+        arm1.setPosition(armPosition + ARM_OFFSET);
         arm2.setPosition(armPosition);
         dump.setPosition(dumpPosition);
         locker.setPosition(lockerPosition);

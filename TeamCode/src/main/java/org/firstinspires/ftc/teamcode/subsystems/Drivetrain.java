@@ -50,7 +50,7 @@ public class Drivetrain extends MecanumDrive implements Subsystem {
 
     public static double WHEEL_RADIUS = 1.889764; // in
     public static double GEAR_RATIO = 1; // output (wheel) speed / input (motor) speed
-    public static double TRACK_WIDTH = 13.17; // in
+    public static double TRACK_WIDTH = 12.24; // in
 
     public static double kV = 1.0 / rpmToVelocity(MAX_RPM);
     public static double kA = 0;
