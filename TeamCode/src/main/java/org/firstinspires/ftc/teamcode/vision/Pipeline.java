@@ -1,6 +1,5 @@
 package org.firstinspires.ftc.teamcode.vision;
 
-import org.firstinspires.ftc.teamcode.opmodes.MatchState;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
@@ -12,7 +11,6 @@ import org.openftc.easyopencv.OpenCvPipeline;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 
 public class Pipeline extends OpenCvPipeline {
     public static int CV_THRESHOLD = 150;
@@ -38,13 +36,16 @@ public class Pipeline extends OpenCvPipeline {
 
     void cropInput(Mat input)
     {
+        /*
         switch (MatchState.CurrentAlliance) {
             case BLUE:
                 croppedInput = new Mat(input, CROP_RECT);
                 break;
             case RED:
-                croppedInput = new Mat(input,CROP_RECT_2);
-        }
+
+
+         */
+        croppedInput = new Mat(input, CROP_RECT);
     }
 
 

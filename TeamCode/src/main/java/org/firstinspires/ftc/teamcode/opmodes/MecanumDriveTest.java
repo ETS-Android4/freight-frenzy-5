@@ -88,6 +88,9 @@ public class MecanumDriveTest extends LinearOpMode {
             } else  if (gamepad2.dpad_down) {
                 lift.setHubLevel(Lift.HubLevel.FIRST);
             }
+            if (stickyGamepad2.b) {
+                lift.resetLift();
+            }
             /*
             if (stickyGamepad2.y) {
                 claw.forwardCycle();

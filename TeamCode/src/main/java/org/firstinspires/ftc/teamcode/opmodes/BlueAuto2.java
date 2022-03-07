@@ -17,27 +17,29 @@ import org.firstinspires.ftc.teamcode.subsystems.OpenCVCamera;
 @Config
 @Autonomous
 public class BlueAuto2 extends LinearOpMode {
-    public static Pose2d INIT_POSE = new Pose2d(-9,64,0);
-    public static Pose2d FIRST_LEVEL_POSE = new Pose2d(-9,50,0);
-    public static Pose2d ENTER_WAREHOUSE_POSE = new Pose2d(9,66,0);
-    public static Pose2d WAREHOUSE_POSE = new Pose2d(40,66,0);
+    public static Pose2d INIT_POSE = new Pose2d(9,64,0);
+    public static Pose2d DUMP_BLOCK_POSE = new Pose2d(-9,67,0);
+    public static Pose2d WAREHOUSE_POSE = new Pose2d(44,67,0);
 
     private NanoClock clock;
 
     @Override
     public void runOpMode() throws InterruptedException {
         FreightFrenzyRobot robot = new FreightFrenzyRobot(this);
-        OpenCVCamera camera = new OpenCVCamera(robot);
-        robot.registerSubsystem(camera);
+        //OpenCVCamera camera = new OpenCVCamera(robot);
+        //robot.registerSubsystem(camera);
         clock = NanoClock.system();
 
         robot.drive.setPoseEstimate(INIT_POSE);
-        robot.lift.autoState();
+        //robot.lift.autoState();
         MatchState.CurrentAlliance = MatchState.Alliance.BLUE;
         MatchState.CurrentPosition = MatchState.AutoPosition.WAREHOUSE;
 
+        robot.lift.setHubLevel(Lift.HubLevel.THIRD);
+
         while (!isStarted() && !isStopRequested()) {
             robot.update();
+            /*
             telemetry.addData("Duck Position", camera.getDuckPosition());
             telemetry.addData("Duck X", camera.getDuckX());
             telemetry.addData("Recognition Area", camera.getRecognitionArea());
@@ -52,63 +54,57 @@ public class BlueAuto2 extends LinearOpMode {
                 case RIGHT:
                     robot.lift.setHubLevel(Lift.HubLevel.THIRD);
             }
+
+             */
         }
-        camera.shutdown();
+        //camera.shutdown();
 
         if (isStopRequested()) return;
 
         double initialTimestamp = clock.seconds();
 
         robot.lift.cycleOuttake();
-        while (robot.lift.getOuttakeState() != Lift.OuttakeState.EXTEND && !robot.lift.isLiftExtended()) {
-            robot.update();
-        }
         robot.runCommand(robot.drive.followTrajectorySequence(
                 robot.drive.trajectorySequenceBuilder(INIT_POSE)
-                        .waitSeconds(1)
+                        .lineToLinearHeading(DUMP_BLOCK_POSE)
                         .build()
         ));
-        if (robot.lift.getHubLevel() == Lift.HubLevel.FIRST) {
-            robot.runCommand(robot.drive.followTrajectory(
-                    robot.drive.trajectoryBuilder(INIT_POSE)
-                            .lineToLinearHeading(FIRST_LEVEL_POSE)
-                            .build()
-            ));
-        }
 
         robot.runCommand(robot.drive.followTrajectorySequence(
                 robot.drive.trajectorySequenceBuilder(robot.drive.getPoseEstimate())
                         .addTemporalMarker(robot.lift::cycleOuttake)
                         .waitSeconds(0.1)
-                        .splineToLinearHeading(ENTER_WAREHOUSE_POSE, ENTER_WAREHOUSE_POSE.getHeading())
-                        .addTemporalMarker(() -> {
+                        .addDisplacementMarker(8, () -> {
                             robot.lift.cycleOuttake();
                             robot.intake.cycleWrist();
                         })
-                        .lineToLinearHeading(WAREHOUSE_POSE)
+                        .splineToLinearHeading(WAREHOUSE_POSE, WAREHOUSE_POSE.getHeading())
                         .build()
         ));
-        while (!isStopRequested() && robot.intake.getIntakeState() == Intake.IntakeState.INTAKE) {
+        double intakeStartTimestamp = clock.seconds();
+        while (!isStopRequested() && robot.intake.getIntakeState() == Intake.IntakeState.INTAKE && clock.seconds() - intakeStartTimestamp < 3) {
             robot.drive.setDrivePower(new Pose2d(0.05 +0.1 * Math.sin(4 * clock.seconds()),0,0));
             robot.update();
         }
         if (isStopRequested()) return;
+        if (!robot.intake.hasFreight()) {
+            robot.intake.cycleWrist();
+        }
         robot.lift.setHubLevel(Lift.HubLevel.THIRD);
 
-        Trajectory cycleTraj = robot.drive.trajectoryBuilder(WAREHOUSE_POSE, true)
-                .addSpatialMarker(new Vector2d(24,67), () -> {
-                    robot.lift.cycleOuttake();
-                    robot.intake.setIntakePower(0);
-                })
-                .lineToLinearHeading(INIT_POSE)
-                .build();
-
         while (clock.seconds() - initialTimestamp < 25) {
+            Trajectory cycleTraj = robot.drive.trajectoryBuilder(robot.drive.getPoseEstimate(), true)
+                    .addSpatialMarker(new Vector2d(15,67), () -> {
+                        robot.lift.cycleOuttake();
+                        robot.intake.setIntakePower(0);
+                    })
+                    .lineToLinearHeading(DUMP_BLOCK_POSE)
+                    .build();
+
             robot.addCommand(robot.drive.followTrajectorySequence(
                     robot.drive.trajectorySequenceBuilder(robot.drive.getPoseEstimate())
-                            .splineToLinearHeading(WAREHOUSE_POSE, WAREHOUSE_POSE.getHeading())
                             .addTrajectory(cycleTraj)
-                            .waitSeconds(0.1)
+                            .waitSeconds(0.5)
                             .build()
             ));
             while (!isStopRequested() && !robot.commandsFinished()) {
@@ -121,20 +117,23 @@ public class BlueAuto2 extends LinearOpMode {
                     robot.drive.trajectorySequenceBuilder(robot.drive.getPoseEstimate())
                             .addTemporalMarker(robot.lift::cycleOuttake)
                             .waitSeconds(0.1)
-                            .lineToLinearHeading(ENTER_WAREHOUSE_POSE)
-                            .addTemporalMarker(() -> {
+                            .addDisplacementMarker(8, () -> {
                                 robot.lift.cycleOuttake();
                                 robot.intake.cycleWrist();
                             })
-                            .lineToLinearHeading(WAREHOUSE_POSE)
+                            .splineToLinearHeading(WAREHOUSE_POSE, WAREHOUSE_POSE.getHeading())
                             .build()
             ));
             if (isStopRequested()) return;
-            while (!isStopRequested() && robot.intake.getIntakeState() == Intake.IntakeState.INTAKE) {
+            intakeStartTimestamp = clock.seconds();
+            while (!isStopRequested() && robot.intake.getIntakeState() == Intake.IntakeState.INTAKE && clock.seconds() - intakeStartTimestamp < 3) {
                 robot.drive.setDrivePower(new Pose2d(0.05 +0.1 * Math.sin(4 * clock.seconds()),0,0));
                 robot.update();
             }
             if (isStopRequested()) return;
+            if (!robot.intake.hasFreight()) {
+                robot.intake.cycleWrist();
+            }
         }
     }
 }
