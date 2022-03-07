@@ -5,11 +5,13 @@ import android.graphics.Color;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.lynx.LynxNackException;
 import com.qualcomm.hardware.lynx.commands.core.LynxI2cConfigureChannelCommand;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.hardware.LEDRiver;
 
+@Disabled
 @TeleOp(name = "LEDRiver Demo")
 public class LEDRiverDemo extends LinearOpMode {
     @Override
