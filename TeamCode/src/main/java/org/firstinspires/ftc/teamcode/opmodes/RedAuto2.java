@@ -1,10 +1,10 @@
 package org.firstinspires.ftc.teamcode.opmodes;
 
 import com.acmerobotics.dashboard.config.Config;
-import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.acmerobotics.roadrunner.trajectory.Trajectory;
+import com.acmerobotics.roadrunner.util.Angle;
 import com.acmerobotics.roadrunner.util.NanoClock;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -17,28 +17,44 @@ import org.firstinspires.ftc.teamcode.subsystems.OpenCVCamera;
 @Config
 @Autonomous
 public class RedAuto2 extends LinearOpMode {
-    public static Pose2d INIT_POSE = new Pose2d(-9,-64,0);
-    public static Pose2d FIRST_LEVEL_POSE = new Pose2d(-9,-50,0);
-    public static Pose2d ENTER_WAREHOUSE_POSE = new Pose2d(9,-66,0);
-    public static Pose2d WAREHOUSE_POSE = new Pose2d(44,-66,0);
+    public static Pose2d INIT_POSE = new Pose2d(9,-64,Math.toRadians(180));
+    public static Pose2d FIRST_DUMP_POSE = new Pose2d(-12,-64,Math.toRadians(180));
+    public static Pose2d DUMP_BLOCK_POSE = new Pose2d(-9,-64,Math.toRadians(180));
+    public static Pose2d WAREHOUSE_POSE = new Pose2d(41,-63,Math.toRadians(180+5));
+    public static Pose2d EXIT_WAREHOUSE_POSE = new Pose2d(36,-65,Math.toRadians(180-5));
+    public static double intake_move_factor = -1;
 
     private NanoClock clock;
 
     @Override
     public void runOpMode() throws InterruptedException {
         FreightFrenzyRobot robot = new FreightFrenzyRobot(this);
-        OpenCVCamera camera = new OpenCVCamera(robot);
-        robot.registerSubsystem(camera);
+        //OpenCVCamera camera = new OpenCVCamera(robot);
+        //robot.registerSubsystem(camera);
         clock = NanoClock.system();
+        double intakeTimes = 0;
 
         robot.drive.setPoseEstimate(INIT_POSE);
-        robot.lift.autoState();
-        MatchState.CurrentAlliance = MatchState.Alliance.RED;
+        //robot.lift.autoState();
+        MatchState.CurrentAlliance = MatchState.Alliance.BLUE;
         MatchState.CurrentPosition = MatchState.AutoPosition.WAREHOUSE;
+
+        robot.lift.setHubLevel(Lift.HubLevel.FIRST);
+
+        Trajectory cycleTraj = robot.drive.trajectoryBuilder(EXIT_WAREHOUSE_POSE, true)
+                .addSpatialMarker(new Vector2d(24,67), () -> {
+                    robot.lift.cycleOuttake();
+                    robot.intake.setIntakePower(0);
+                })
+                .lineToLinearHeading(DUMP_BLOCK_POSE)
+                .build();
 
         while (!isStarted() && !isStopRequested()) {
             robot.update();
+            /*
             telemetry.addData("Duck Position", camera.getDuckPosition());
+            telemetry.addData("Duck X", camera.getDuckX());
+            telemetry.addData("Recognition Area", camera.getRecognitionArea());
             telemetry.update();
             switch (camera.getDuckPosition()) {
                 case LEFT:
@@ -50,92 +66,108 @@ public class RedAuto2 extends LinearOpMode {
                 case RIGHT:
                     robot.lift.setHubLevel(Lift.HubLevel.THIRD);
             }
-        }
 
-        camera.shutdown();
+             */
+        }
+        //camera.shutdown();
 
         if (isStopRequested()) return;
 
         double initialTimestamp = clock.seconds();
 
+        // extend outtake
         robot.lift.cycleOuttake();
-        while (robot.lift.getOuttakeState() != Lift.OuttakeState.EXTEND && !robot.lift.isLiftExtended()) {
-            robot.update();
-        }
+        // Pre-load freight, go to FIRST_DUMP_POSE
         robot.runCommand(robot.drive.followTrajectorySequence(
                 robot.drive.trajectorySequenceBuilder(INIT_POSE)
                         .waitSeconds(1)
+                        .lineToLinearHeading(FIRST_DUMP_POSE)
+                        .waitSeconds(0.1)
                         .build()
         ));
-        if (robot.lift.getHubLevel() == Lift.HubLevel.FIRST) {
-            robot.runCommand(robot.drive.followTrajectory(
-                    robot.drive.trajectoryBuilder(INIT_POSE)
-                            .lineToLinearHeading(FIRST_LEVEL_POSE)
-                            .build()
-            ));
-        }
 
+        // Go to warehouse and start intake
         robot.runCommand(robot.drive.followTrajectorySequence(
                 robot.drive.trajectorySequenceBuilder(robot.drive.getPoseEstimate())
                         .addTemporalMarker(robot.lift::cycleOuttake)
                         .waitSeconds(0.1)
-                        .lineToLinearHeading(ENTER_WAREHOUSE_POSE)
-                        .addTemporalMarker(() -> {
+                        .addDisplacementMarker(8, () -> {
                             robot.lift.cycleOuttake();
+                            robot.intake.setIntakeDirection(Intake.IntakeDirection.REAR);
                             robot.intake.cycleWrist();
                         })
                         .lineToLinearHeading(WAREHOUSE_POSE)
                         .build()
         ));
+        // Intaking movement
         double intakeStartTimestamp = clock.seconds();
-        while (!isStopRequested() && robot.intake.getIntakeState() == Intake.IntakeState.INTAKE && clock.seconds() - intakeStartTimestamp < 3) {
-            robot.drive.setDrivePower(new Pose2d(0.05 +0.1 * Math.sin(4 * clock.seconds()),0,0));
+        while (    (!isStopRequested())
+                && robot.intake.getIntakeState() == Intake.IntakeState.INTAKE
+                && (clock.seconds() - intakeStartTimestamp < 3)) {
             robot.update();
+            robot.drive.setDrivePower(new Pose2d(intake_move_factor * (0.1 + 0.1 * Math.sin(4 * clock.seconds())),
+                    0,
+                    intake_move_factor * (-0.05 - 0.05 * Math.sin(4 * clock.seconds()))));
         }
+        // stop intaking
+        robot.drive.setDrivePower(new Pose2d());
+        robot.update();
         if (isStopRequested()) return;
+        if (robot.intake.getIntakeState() == Intake.IntakeState.INTAKE) {
+            robot.intake.cycleWrist();
+        }
+
+        // set hub level to third for repick
         robot.lift.setHubLevel(Lift.HubLevel.THIRD);
 
-        Trajectory cycleTraj = robot.drive.trajectoryBuilder(WAREHOUSE_POSE, true)
-                .addSpatialMarker(new Vector2d(24,67), () -> {
-                    robot.lift.cycleOuttake();
-                    robot.intake.setIntakePower(0);
-                })
-                .lineToLinearHeading(INIT_POSE)
-                .build();
-
         while (clock.seconds() - initialTimestamp < 25) {
+            intakeTimes++;
+            // move to alliance hub
             robot.addCommand(robot.drive.followTrajectorySequence(
                     robot.drive.trajectorySequenceBuilder(robot.drive.getPoseEstimate())
-                            .splineToLinearHeading(WAREHOUSE_POSE, WAREHOUSE_POSE.getHeading())
+                            .lineToLinearHeading(EXIT_WAREHOUSE_POSE)
                             .addTrajectory(cycleTraj)
-                            .waitSeconds(0.1)
                             .build()
             ));
+            // manually set intake power to 0 after intake state becomes RETRACT
             while (!isStopRequested() && !robot.commandsFinished()) {
                 robot.update();
                 if (robot.intake.getIntakeState() == Intake.IntakeState.RETRACT) {
                     robot.intake.setIntakePower(0);
                 }
             }
-            if (isStopRequested()) return;
+            // score freight
+            Trajectory traj_backtowh = robot.drive.trajectoryBuilder(robot.drive.getPoseEstimate(), true)
+                    .splineToLinearHeading(new Pose2d(WAREHOUSE_POSE.getX() + 2 * intakeTimes, WAREHOUSE_POSE.getY(), WAREHOUSE_POSE.getHeading()), WAREHOUSE_POSE.getHeading())
+                    .build();
             robot.runCommand(robot.drive.followTrajectorySequence(
                     robot.drive.trajectorySequenceBuilder(robot.drive.getPoseEstimate())
                             .addTemporalMarker(robot.lift::cycleOuttake)
                             .waitSeconds(0.1)
-                            .lineToLinearHeading(ENTER_WAREHOUSE_POSE)
-                            .addTemporalMarker(() -> {
+                            .addDisplacementMarker(8, () -> {
                                 robot.lift.cycleOuttake();
                                 robot.intake.cycleWrist();
                             })
-                            .lineToLinearHeading(WAREHOUSE_POSE)
+                            // go back to warehouse
+                            .addTrajectory(traj_backtowh)
                             .build()
             ));
+            if (isStopRequested()) return;
+            // start intaking again
             intakeStartTimestamp = clock.seconds();
             while (!isStopRequested() && robot.intake.getIntakeState() == Intake.IntakeState.INTAKE && clock.seconds() - intakeStartTimestamp < 3) {
-                robot.drive.setDrivePower(new Pose2d(0.05 +0.1 * Math.sin(4 * clock.seconds()),0,0));
+                robot.drive.setDrivePower(new Pose2d(intake_move_factor * (0.1 +0.1 * Math.sin(4 * clock.seconds())),
+                        0,
+                        intake_move_factor * (-0.05 - 0.05 * Math.sin(4 * clock.seconds()))));
                 robot.update();
             }
+            // stop intaking
+            robot.drive.setDrivePower(new Pose2d());
+            robot.update();
             if (isStopRequested()) return;
+            if (robot.intake.getIntakeState() == Intake.IntakeState.INTAKE) {
+                robot.intake.cycleWrist();
+            }
         }
     }
 }

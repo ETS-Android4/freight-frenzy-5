@@ -68,7 +68,7 @@ public class Lift implements Subsystem {
 
     public static double LIFT_DUMP_POSITION = 20;
     public static double LIFT_SECOND_LEVEL_POSITION = 18;
-    public static double LIFT_FIRST_LEVEL_POSITION = 16;
+    public static double LIFT_FIRST_LEVEL_POSITION = 15.5;
     public static double LIFT_SHARED_HUB_POSITION = 4;
     public static double LIFT_RETRACT_POSITION = 0;
     public static double LIFT_EXTEND_TIME = 0.5;

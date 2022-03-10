@@ -38,7 +38,7 @@ public class BlueAuto2 extends LinearOpMode {
         MatchState.CurrentAlliance = MatchState.Alliance.BLUE;
         MatchState.CurrentPosition = MatchState.AutoPosition.WAREHOUSE;
 
-        robot.lift.setHubLevel(Lift.HubLevel.FIRST);
+        robot.lift.setHubLevel(Lift.HubLevel.SECOND);
 
         Trajectory cycleTraj = robot.drive.trajectoryBuilder(EXIT_WAREHOUSE_POSE, true)
                 .addSpatialMarker(new Vector2d(24,67), () -> {
