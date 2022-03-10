@@ -18,8 +18,10 @@ import org.firstinspires.ftc.teamcode.subsystems.OpenCVCamera;
 @Autonomous
 public class BlueAuto2 extends LinearOpMode {
     public static Pose2d INIT_POSE = new Pose2d(9,64,0);
-    public static Pose2d DUMP_BLOCK_POSE = new Pose2d(-9,67,0);
-    public static Pose2d WAREHOUSE_POSE = new Pose2d(44,67,0);
+    public static Pose2d FIRST_DUMP_POSE = new Pose2d(-11,64,0);
+    public static Pose2d DUMP_BLOCK_POSE = new Pose2d(-9,64,0);
+    public static Pose2d WAREHOUSE_POSE = new Pose2d(41,63,-Math.toRadians(5));
+    public static Pose2d EXIT_WAREHOUSE_POSE = new Pose2d(36,65,Math.toRadians(5));
 
     private NanoClock clock;
 
@@ -29,13 +31,22 @@ public class BlueAuto2 extends LinearOpMode {
         //OpenCVCamera camera = new OpenCVCamera(robot);
         //robot.registerSubsystem(camera);
         clock = NanoClock.system();
+        double intakeTimes = 0;
 
         robot.drive.setPoseEstimate(INIT_POSE);
         //robot.lift.autoState();
         MatchState.CurrentAlliance = MatchState.Alliance.BLUE;
         MatchState.CurrentPosition = MatchState.AutoPosition.WAREHOUSE;
 
-        robot.lift.setHubLevel(Lift.HubLevel.THIRD);
+        robot.lift.setHubLevel(Lift.HubLevel.FIRST);
+
+        Trajectory cycleTraj = robot.drive.trajectoryBuilder(EXIT_WAREHOUSE_POSE, true)
+                .addSpatialMarker(new Vector2d(24,67), () -> {
+                    robot.lift.cycleOuttake();
+                    robot.intake.setIntakePower(0);
+                })
+                .lineToLinearHeading(DUMP_BLOCK_POSE)
+                .build();
 
         while (!isStarted() && !isStopRequested()) {
             robot.update();
@@ -66,7 +77,9 @@ public class BlueAuto2 extends LinearOpMode {
         robot.lift.cycleOuttake();
         robot.runCommand(robot.drive.followTrajectorySequence(
                 robot.drive.trajectorySequenceBuilder(INIT_POSE)
-                        .lineToLinearHeading(DUMP_BLOCK_POSE)
+                        .waitSeconds(1)
+                        .lineToLinearHeading(FIRST_DUMP_POSE)
+                        .waitSeconds(0.1)
                         .build()
         ));
 
@@ -78,33 +91,28 @@ public class BlueAuto2 extends LinearOpMode {
                             robot.lift.cycleOuttake();
                             robot.intake.cycleWrist();
                         })
-                        .splineToLinearHeading(WAREHOUSE_POSE, WAREHOUSE_POSE.getHeading())
+                        .lineToLinearHeading(WAREHOUSE_POSE)
                         .build()
         ));
         double intakeStartTimestamp = clock.seconds();
         while (!isStopRequested() && robot.intake.getIntakeState() == Intake.IntakeState.INTAKE && clock.seconds() - intakeStartTimestamp < 3) {
-            robot.drive.setDrivePower(new Pose2d(0.05 +0.1 * Math.sin(4 * clock.seconds()),0,0));
             robot.update();
+            robot.drive.setDrivePower(new Pose2d(0.1 +0.1 * Math.sin(4 * clock.seconds()),0,-0.05 - 0.05 * Math.sin(4 * clock.seconds())));
         }
+        robot.drive.setDrivePower(new Pose2d());
+        robot.update();
         if (isStopRequested()) return;
-        if (!robot.intake.hasFreight()) {
+        if (robot.intake.getIntakeState() == Intake.IntakeState.INTAKE) {
             robot.intake.cycleWrist();
         }
         robot.lift.setHubLevel(Lift.HubLevel.THIRD);
 
         while (clock.seconds() - initialTimestamp < 25) {
-            Trajectory cycleTraj = robot.drive.trajectoryBuilder(robot.drive.getPoseEstimate(), true)
-                    .addSpatialMarker(new Vector2d(15,67), () -> {
-                        robot.lift.cycleOuttake();
-                        robot.intake.setIntakePower(0);
-                    })
-                    .lineToLinearHeading(DUMP_BLOCK_POSE)
-                    .build();
-
+            intakeTimes++;
             robot.addCommand(robot.drive.followTrajectorySequence(
                     robot.drive.trajectorySequenceBuilder(robot.drive.getPoseEstimate())
+                            .lineToLinearHeading(EXIT_WAREHOUSE_POSE)
                             .addTrajectory(cycleTraj)
-                            .waitSeconds(0.5)
                             .build()
             ));
             while (!isStopRequested() && !robot.commandsFinished()) {
@@ -121,17 +129,19 @@ public class BlueAuto2 extends LinearOpMode {
                                 robot.lift.cycleOuttake();
                                 robot.intake.cycleWrist();
                             })
-                            .splineToLinearHeading(WAREHOUSE_POSE, WAREHOUSE_POSE.getHeading())
+                            .splineToLinearHeading(new Pose2d(WAREHOUSE_POSE.getX() + 2 * intakeTimes, WAREHOUSE_POSE.getY(), WAREHOUSE_POSE.getHeading()), WAREHOUSE_POSE.getHeading())
                             .build()
             ));
             if (isStopRequested()) return;
             intakeStartTimestamp = clock.seconds();
             while (!isStopRequested() && robot.intake.getIntakeState() == Intake.IntakeState.INTAKE && clock.seconds() - intakeStartTimestamp < 3) {
-                robot.drive.setDrivePower(new Pose2d(0.05 +0.1 * Math.sin(4 * clock.seconds()),0,0));
+                robot.drive.setDrivePower(new Pose2d(0.1 +0.1 * Math.sin(4 * clock.seconds()),0,-0.05 - 0.05 * Math.sin(4 * clock.seconds())));
                 robot.update();
             }
+            robot.drive.setDrivePower(new Pose2d());
+            robot.update();
             if (isStopRequested()) return;
-            if (!robot.intake.hasFreight()) {
+            if (robot.intake.getIntakeState() == Intake.IntakeState.INTAKE) {
                 robot.intake.cycleWrist();
             }
         }
