@@ -129,13 +129,20 @@ public class BlueAuto2 extends LinearOpMode {
                                 robot.lift.cycleOuttake();
                                 robot.intake.cycleWrist();
                             })
-                            .splineToLinearHeading(new Pose2d(WAREHOUSE_POSE.getX() + 2 * intakeTimes, WAREHOUSE_POSE.getY(), WAREHOUSE_POSE.getHeading()), WAREHOUSE_POSE.getHeading())
+                            .splineToLinearHeading(new Pose2d(WAREHOUSE_POSE.getX() + 2 * intakeTimes,
+                                    WAREHOUSE_POSE.getY(),
+                                    WAREHOUSE_POSE.getHeading()),
+                                    WAREHOUSE_POSE.getHeading())
                             .build()
             ));
             if (isStopRequested()) return;
             intakeStartTimestamp = clock.seconds();
-            while (!isStopRequested() && robot.intake.getIntakeState() == Intake.IntakeState.INTAKE && clock.seconds() - intakeStartTimestamp < 3) {
-                robot.drive.setDrivePower(new Pose2d(0.1 +0.1 * Math.sin(4 * clock.seconds()),0,-0.05 - 0.05 * Math.sin(4 * clock.seconds())));
+            while ( !isStopRequested()
+                    && (robot.intake.getIntakeState() == Intake.IntakeState.INTAKE)
+                    && (clock.seconds() - intakeStartTimestamp < 3)) {
+                robot.drive.setDrivePower(new Pose2d(0.05 +0.05 * Math.sin(4 * clock.seconds()),
+                        0,
+                        -0.05 - 0.05 * Math.sin(4 * clock.seconds())));
                 robot.update();
             }
             robot.drive.setDrivePower(new Pose2d());

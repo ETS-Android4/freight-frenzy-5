@@ -76,7 +76,7 @@ public class MecanumDriveTest extends LinearOpMode {
             } else if (gamepad2.dpad_left) {
                 lift.setHubLevel(Lift.HubLevel.SECOND);
             } else  if (gamepad2.dpad_down) {
-                lift.setHubLevel(Lift.HubLevel.FIRST);
+                lift.setHubLevel(Lift.HubLevel.SHARED);
             }
             if (stickyGamepad2.b) {
                 lift.resetLift();

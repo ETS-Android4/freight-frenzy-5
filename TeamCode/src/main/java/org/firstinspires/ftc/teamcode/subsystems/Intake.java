@@ -167,7 +167,7 @@ public class Intake implements Subsystem {
                     intakeRear.setPower(intakePower);
                 }
                 if (state == IntakeState.OUTTAKE) {
-                    intakeRear.setPower(intakePower);
+                    intakeFront.setPower(intakePower);
                 } else {
                     intakeFront.setPower(0);
                 }
