@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.vision;
 
+import org.firstinspires.ftc.teamcode.subsystems.OpenCVCamera;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.Rect;
@@ -8,19 +9,14 @@ import org.opencv.imgproc.Imgproc;
 import org.openftc.easyopencv.OpenCvPipeline;
 
 public class BlueMarkerPipeline extends OpenCvPipeline {
-    public enum ShippingElementPosition {
-        LEFT,
-        MIDDLE,
-        RIGHT
-    }
+    private OpenCVCamera.DuckPosition position = OpenCVCamera.DuckPosition.NONE;
 
     static final Scalar BLUE = new Scalar(0, 0, 255);
     static final Scalar GREEN = new Scalar(0, 255, 0);
-    static final Scalar BLACK = new Scalar(0, 0, 0);
 
-    static final Rect LEFT_RECT = new Rect(165,325,40,20);//new Rect(240,330,40,20);
-    static final Rect MIDDLE_RECT = new Rect(265,335,40,20);//new Rect(350,330,40,20);
-    static final Rect RIGHT_RECT = new Rect(375,335,40,20);//new Rect(450,325,40,20);
+    static final Rect LEFT_RECT = new Rect(165,315,40,30);//new Rect(240,330,40,20);
+    static final Rect MIDDLE_RECT = new Rect(285,325,40,30);//new Rect(350,330,40,20);
+    static final Rect RIGHT_RECT = new Rect(395,325,40,30);//new Rect(450,325,40,20);
 
     Mat leftCb, middleCb, rightCb;
     Mat YCrCb = new Mat();
@@ -62,11 +58,18 @@ public class BlueMarkerPipeline extends OpenCvPipeline {
 
         if (leftAvg <= middleAvg && leftAvg <= rightAvg) {
             Imgproc.rectangle(input, LEFT_RECT, GREEN,2);
+            position = OpenCVCamera.DuckPosition.LEFT;
         } else if (middleAvg <= leftAvg && middleAvg <= rightAvg) {
             Imgproc.rectangle(input, MIDDLE_RECT, GREEN,2);
+            position = OpenCVCamera.DuckPosition.MIDDLE;
         } else {
             Imgproc.rectangle(input, RIGHT_RECT, GREEN,2);
+            position = OpenCVCamera.DuckPosition.RIGHT;
         }
         return input;
+    }
+
+    public OpenCVCamera.DuckPosition getPosition() {
+        return position;
     }
 }

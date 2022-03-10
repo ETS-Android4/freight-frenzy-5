@@ -1,7 +1,5 @@
 package org.firstinspires.ftc.teamcode.opmodes;
 
-import android.graphics.Color;
-
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.qualcomm.hardware.lynx.LynxModule;
@@ -11,9 +9,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.framework.Robot;
-import org.firstinspires.ftc.teamcode.hardware.LEDRiver;
 import org.firstinspires.ftc.teamcode.hardware.StickyGamepad;
-import org.firstinspires.ftc.teamcode.subsystems.CappingClaw;
 import org.firstinspires.ftc.teamcode.subsystems.DuckSpinner;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Lift;
@@ -26,12 +22,6 @@ public class MecanumDriveTest extends LinearOpMode {
     public static double DUCK_SPINNER_MULTIPLIER = 1;
     @Override
     public void runOpMode() throws InterruptedException {
-        LynxModule hub = hardwareMap.get(LynxModule.class,"Expansion Hub 2");
-        try {
-            new LynxI2cConfigureChannelCommand(hub, 0, LynxI2cConfigureChannelCommand.SpeedCode.FAST_400K).send();
-        } catch (LynxNackException | InterruptedException ex) {
-            ex.printStackTrace();
-        }
         Robot robot = new Robot(this);
         SimpleMecanumDrive mecanumDrive = new SimpleMecanumDrive(robot);
         robot.registerSubsystem(mecanumDrive);
@@ -90,6 +80,12 @@ public class MecanumDriveTest extends LinearOpMode {
             }
             if (stickyGamepad2.b) {
                 lift.resetLift();
+            }
+            if (stickyGamepad2.x) {
+                lift.incrementArmOffset();
+            }
+            if (stickyGamepad2.y) {
+                lift.decrementArmOffset();
             }
             /*
             if (stickyGamepad2.y) {

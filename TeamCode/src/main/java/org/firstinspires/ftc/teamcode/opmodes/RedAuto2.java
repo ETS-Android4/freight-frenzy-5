@@ -20,7 +20,7 @@ public class RedAuto2 extends LinearOpMode {
     public static Pose2d INIT_POSE = new Pose2d(-9,-64,0);
     public static Pose2d FIRST_LEVEL_POSE = new Pose2d(-9,-50,0);
     public static Pose2d ENTER_WAREHOUSE_POSE = new Pose2d(9,-66,0);
-    public static Pose2d WAREHOUSE_POSE = new Pose2d(48,-66,0);
+    public static Pose2d WAREHOUSE_POSE = new Pose2d(44,-66,0);
 
     private NanoClock clock;
 
@@ -39,8 +39,6 @@ public class RedAuto2 extends LinearOpMode {
         while (!isStarted() && !isStopRequested()) {
             robot.update();
             telemetry.addData("Duck Position", camera.getDuckPosition());
-            telemetry.addData("Duck X", camera.getDuckX());
-            telemetry.addData("Recognition Area", camera.getRecognitionArea());
             telemetry.update();
             switch (camera.getDuckPosition()) {
                 case LEFT:
@@ -89,7 +87,8 @@ public class RedAuto2 extends LinearOpMode {
                         .lineToLinearHeading(WAREHOUSE_POSE)
                         .build()
         ));
-        while (!isStopRequested() && robot.intake.getIntakeState() == Intake.IntakeState.INTAKE) {
+        double intakeStartTimestamp = clock.seconds();
+        while (!isStopRequested() && robot.intake.getIntakeState() == Intake.IntakeState.INTAKE && clock.seconds() - intakeStartTimestamp < 3) {
             robot.drive.setDrivePower(new Pose2d(0.05 +0.1 * Math.sin(4 * clock.seconds()),0,0));
             robot.update();
         }
@@ -131,7 +130,8 @@ public class RedAuto2 extends LinearOpMode {
                             .lineToLinearHeading(WAREHOUSE_POSE)
                             .build()
             ));
-            while (!isStopRequested() && robot.intake.getIntakeState() == Intake.IntakeState.INTAKE) {
+            intakeStartTimestamp = clock.seconds();
+            while (!isStopRequested() && robot.intake.getIntakeState() == Intake.IntakeState.INTAKE && clock.seconds() - intakeStartTimestamp < 3) {
                 robot.drive.setDrivePower(new Pose2d(0.05 +0.1 * Math.sin(4 * clock.seconds()),0,0));
                 robot.update();
             }

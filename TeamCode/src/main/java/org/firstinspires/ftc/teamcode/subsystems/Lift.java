@@ -21,10 +21,10 @@ import org.firstinspires.ftc.teamcode.framework.Subsystem;
 public class Lift implements Subsystem {
     public static final double PULLEY_RADIUS = 0.626496;
     public static final double TICKS_PER_REV = 101.08;
-    public static PIDCoefficients LIFT_PID_COEFFICIENTS = new PIDCoefficients(0.15, 0.05, 0.01);
+    public static PIDCoefficients LIFT_PID_COEFFICIENTS = new PIDCoefficients(0.2, 0.05, 0.01);
     public static double kG = 0.0;
-    public static double ARM_MAX_VEL = 3;
-    public static double ARM_MAX_ACCEL = 3;
+    public static double ARM_MAX_VEL = 4;
+    public static double ARM_MAX_ACCEL = 4;
 
     private DcMotorEx lift;
     private double liftPower = 0;
@@ -37,20 +37,23 @@ public class Lift implements Subsystem {
     private double armPosition = ARM_RETRACT_POSITION;
     private double dumpPosition = DUMPER_RETRACT_POSITION;
     private double lockerPosition = LOCKER_UNLOCK_POSITION;
+    private double armOffset = 0;
 
     private TouchSensor limitSwitch;
 
     public static double ARM_RETRACT_POSITION = 0.03;
-    public static double ARM_PICK_FREIGHT_POSITION = 0;
+    public static double ARM_PICK_FREIGHT_POSITION = 0.01;
     public static double ARM_LIFT_POSITION = 0.4;
     public static double ARM_THIRD_LEVEL_POSITION = 0.7;
-    public static double ARM_SECOND_LEVEL_POSITION = 0.9;
-    public static double ARM_FIRST_LEVEL_POSITION = 0.87;
+    public static double ARM_SECOND_LEVEL_POSITION = 0.85;
+    public static double ARM_FIRST_LEVEL_POSITION = 0.92;
+    public static double ARM_SHARED_HUB_POSITION = 0.9;
     public static double DUMPER_RETRACT_POSITION = 0.685;
-    public static double DUMPER_LIFTING_POSITION = 0.7;
+    public static double DUMPER_LIFTING_POSITION = 0.75;
     public static double DUMPER_AUTO_POSITION = 0.4;
     public static double DUMPER_DUMP_POSITION = 0.2;
-    public static double DUMPER_FIRST_LEVEL_POSITION = 0.23;
+    //public static double DUMPER_FIRST_LEVEL_POSITION = 0.23;
+    public static double DUMPER_SHARED_HUB_POSITION = 0.15;
     public static double LOCKER_LOCK_POSITION = 1;
     public static double LOCKER_UNLOCK_POSITION = 0.5;
     public static double LOCKER_HOLDING_POSITION = 0.77;
@@ -64,10 +67,11 @@ public class Lift implements Subsystem {
     private MotionProfile armMotionProfile;
 
     public static double LIFT_DUMP_POSITION = 20;
-    public static double LIFT_SECOND_LEVEL_POSITION = 17;
-    public static double LIFT_FIRST_LEVEL_POSITION = 4;
+    public static double LIFT_SECOND_LEVEL_POSITION = 18;
+    public static double LIFT_FIRST_LEVEL_POSITION = 16;
+    public static double LIFT_SHARED_HUB_POSITION = 4;
     public static double LIFT_RETRACT_POSITION = 0;
-    public static double LIFT_EXTEND_TIME = 1.5;
+    public static double LIFT_EXTEND_TIME = 0.5;
 
     public enum OuttakeState {
         AUTO,
@@ -83,7 +87,8 @@ public class Lift implements Subsystem {
     public enum HubLevel {
         FIRST,
         SECOND,
-        THIRD
+        THIRD,
+        SHARED
     }
 
     public enum LiftMode {
@@ -167,6 +172,8 @@ public class Lift implements Subsystem {
                 return ARM_SECOND_LEVEL_POSITION;
             case FIRST:
                 return ARM_FIRST_LEVEL_POSITION;
+            case SHARED:
+                return ARM_SHARED_HUB_POSITION;
         }
         return ARM_THIRD_LEVEL_POSITION;
     }
@@ -179,8 +186,18 @@ public class Lift implements Subsystem {
                 return LIFT_SECOND_LEVEL_POSITION;
             case FIRST:
                 return LIFT_FIRST_LEVEL_POSITION;
+            case SHARED:
+                return LIFT_SHARED_HUB_POSITION;
         }
         return LIFT_DUMP_POSITION;
+    }
+
+    public void incrementArmOffset() {
+        armOffset += 0.05;
+    }
+
+    public void decrementArmOffset() {
+        armOffset -= 0.05;
     }
 
     public void setHubLevel(HubLevel level) {
@@ -297,20 +314,30 @@ public class Lift implements Subsystem {
                 break;
             case EXTEND:
                 dumpPosition = DUMPER_DUMP_POSITION;
+                /*
                 if (hubLevel == HubLevel.FIRST)
                     dumpPosition = DUMPER_FIRST_LEVEL_POSITION;
+                 */
+                if (hubLevel == HubLevel.SHARED)
+                    dumpPosition = DUMPER_SHARED_HUB_POSITION;
                 lockerPosition = LOCKER_LOCK_POSITION;
                 armPosition = getArmExtendPosition();
+                armPosition += armOffset;
                 break;
             case DUMP:
                 dumpPosition = DUMPER_DUMP_POSITION;
+                /*
                 if (hubLevel == HubLevel.FIRST)
                     dumpPosition = DUMPER_FIRST_LEVEL_POSITION;
+                 */
+                if (hubLevel == HubLevel.SHARED)
+                    dumpPosition = DUMPER_SHARED_HUB_POSITION;
                 lockerPosition = LOCKER_UNLOCK_POSITION;
                 armPosition = getArmExtendPosition();
+                armPosition += armOffset;
                 break;
             case RETRACT_ARM:
-                dumpPosition = DUMPER_DUMP_POSITION;
+                dumpPosition = DUMPER_LIFTING_POSITION;
                 lockerPosition = LOCKER_LOCK_POSITION;
                 armPosition = ARM_LIFT_POSITION;
                 if (!armMoving) {
@@ -318,7 +345,7 @@ public class Lift implements Subsystem {
                     initialTimestamp = clock.seconds();
                 }
                 if (armMoving && clock.seconds() - initialTimestamp >= ARM_EXTEND_TIME) {
-                    dumpPosition = DUMPER_LIFTING_POSITION;
+                    armPosition = ARM_PICK_FREIGHT_POSITION;
                 }
                 if (armMoving && clock.seconds() - initialTimestamp >= 2*ARM_EXTEND_TIME) {
                     armMoving = false;

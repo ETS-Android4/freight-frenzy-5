@@ -8,6 +8,7 @@ import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.teamcode.framework.Robot;
 import org.firstinspires.ftc.teamcode.framework.Subsystem;
 import org.firstinspires.ftc.teamcode.opmodes.MatchState;
+import org.firstinspires.ftc.teamcode.vision.BlueMarkerPipeline;
 import org.firstinspires.ftc.teamcode.vision.Pipeline;
 import org.openftc.easyopencv.OpenCvCamera;
 import org.openftc.easyopencv.OpenCvCameraFactory;
@@ -16,27 +17,22 @@ import org.openftc.easyopencv.OpenCvWebcam;
 
 @Config
 public class OpenCVCamera implements Subsystem {
-    private static final double DUCK_MIDDLE_X_BLUE = 56;
-    private static final double DUCK_RIGHT_X_BLUE = 82;
-    private static final double DUCK_TOLERANCE_BLUE = 15;
-    private static final double DUCK_MIDDLE_X_RED = 100;
-    private static final double DUCK_RIGHT_X_RED = 182;
-    private static final double DUCK_TOLERANCE_RED = 40;
 
     public enum DuckPosition {
         LEFT,
         MIDDLE,
-        RIGHT
+        RIGHT,
+        NONE
     }
     private OpenCvWebcam webcam;
-    private Pipeline pipeline;
+    private BlueMarkerPipeline pipeline;
 
     public OpenCVCamera (Robot robot) {
         HardwareMap hardwareMap = robot.getHardwareMap();
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
         webcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId);
 
-        pipeline = new Pipeline();
+        pipeline = new BlueMarkerPipeline();
         webcam.setPipeline(pipeline);
         webcam.setMillisecondsPermissionTimeout(2500);
 
@@ -61,7 +57,7 @@ public class OpenCVCamera implements Subsystem {
                  * For a rear facing camera or a webcam, rotation is defined assuming the camera is facing
                  * away from the user.
                  */
-                webcam.startStreaming(640, 480, OpenCvCameraRotation.UPSIDE_DOWN);
+                webcam.startStreaming(640, 480, OpenCvCameraRotation.UPRIGHT);
             }
 
             @Override
@@ -75,30 +71,7 @@ public class OpenCVCamera implements Subsystem {
     }
 
     public DuckPosition getDuckPosition() {
-        double x = pipeline.getX();
-        switch (MatchState.CurrentAlliance) {
-            case BLUE:
-                if (Math.abs(x - DUCK_MIDDLE_X_BLUE) < DUCK_TOLERANCE_BLUE)
-                    return DuckPosition.MIDDLE;
-                else if (Math.abs(x - DUCK_RIGHT_X_BLUE) < DUCK_TOLERANCE_BLUE)
-                    return DuckPosition.RIGHT;
-                break;
-            case RED:
-                if (Math.abs(x - DUCK_MIDDLE_X_RED) < DUCK_TOLERANCE_RED)
-                    return DuckPosition.MIDDLE;
-                else if (Math.abs(x - DUCK_RIGHT_X_RED) < DUCK_TOLERANCE_RED)
-                    return DuckPosition.RIGHT;
-                break;
-        }
-        return DuckPosition.LEFT;
-    }
-
-    public double getDuckX() {
-        return pipeline.getX();
-    }
-
-    public double getRecognitionArea() {
-        return pipeline.getArea();
+        return pipeline.getPosition();
     }
 
     public void shutdown() {

@@ -29,7 +29,7 @@ public class Intake implements Subsystem {
     public static double DISTANCE_SENSOR_INTAKE_THRESHOLD = 40;
     public static double DISTANCE_SENSOR_OUTTAKE_THRESHOLD = 100;
     public static double INTAKE_EXTEND_TIME = 1.5;
-    public static double INTAKE_STALL_CURRENT = 3.5;
+    public static double INTAKE_STALL_CURRENT = 5;
 
     private IntakeState state = IntakeState.RETRACT;
     private IntakeDirection direction = IntakeDirection.FRONT;
@@ -135,6 +135,7 @@ public class Intake implements Subsystem {
                     intakePower = -1;
                     if (clock.seconds() - initialTimestamp > 1.5 * INTAKE_EXTEND_TIME && cachedDistance > DISTANCE_SENSOR_OUTTAKE_THRESHOLD) {
                         state = IntakeState.RETRACT;
+                        intakePower = 0;
                     }
                 }
         }
@@ -149,7 +150,11 @@ public class Intake implements Subsystem {
                 } else {
                     intakeFront.setPower(intakePower);
                 }
-                intakeRear.setPower(0);
+                if (state == IntakeState.OUTTAKE) {
+                    intakeRear.setPower(intakePower);
+                } else {
+                    intakeRear.setPower(0);
+                }
                 break;
             case REAR:
                 leftWristRear.setPosition(wristPosition);
@@ -161,10 +166,15 @@ public class Intake implements Subsystem {
                 } else {
                     intakeRear.setPower(intakePower);
                 }
-                intakeFront.setPower(0);
+                if (state == IntakeState.OUTTAKE) {
+                    intakeRear.setPower(intakePower);
+                } else {
+                    intakeFront.setPower(0);
+                }
                 break;
         }
         packet.put("Intake Current", intakeFront.getCurrent(CurrentUnit.AMPS));
         packet.put("TOF Distance", distanceSensorFront.getDistance(DistanceUnit.MM));
+        packet.put("Intake State", state);
     }
 }
